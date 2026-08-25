@@ -1,8 +1,11 @@
 // Cookieセーブ/ロード
 const SAVE_KEY = 'town_deluxe_save_v1';
 const SAVE_DAYS = 400;
-// 実績・アップグレード・街並み配置は数が際限なく増えるため、Cookieの4KB上限で
-// 本体セーブごと静かに失敗しないよう別途localStorageに保存する。
+// 実績・アップグレード・街並み配置・施設所持数など「種類が増えるほど際限なく
+// 大きくなるデータ」は、Cookieの4KB上限で本体セーブごと静かに失敗しないよう
+// 別途localStorageに保存する。施設が90種類に増えた際、buildingsオブジェクトだけで
+// 初期状態(全て0個)でもCookie上限を超えて一切セーブできなくなる事故が実際に起きたため、
+// 「施設の種類数に比例して大きくなるもの」は原則すべてこちら側に置くこと。
 const LISTS_KEY = 'town_deluxe_lists_v1';
 
 function setCookie(name, value, days) {
@@ -71,21 +74,31 @@ function defaultState() {
   };
 }
 
+// 種類数に応じて際限なく大きくなりうるフィールド。ここに載っているものはCookieに入れず、
+// LISTS_KEY(localStorage)側に保存する。新しく「〜のリスト」「〜ごとの状態を持つオブジェクト」
+// を追加するときは、ここに足すことを忘れないこと。
+const GROWING_FIELDS = ['achievements', 'upgrades', 'layout', 'fameShopUpgrades', 'buildings', 'bgmUnlocked', 'seasonalComplaintsResolved', 'daily'];
+
 function saveGame(state) {
   state.lastSave = Date.now();
-  // 本体(資金・施設数など、サイズが増えないフィールド)はCookieへ
-  const { achievements, upgrades, layout, fameShopUpgrades, ...core } = state;
+  const core = {};
+  const lists = {};
+  Object.keys(state).forEach((key) => {
+    if (GROWING_FIELDS.includes(key)) lists[key] = state[key];
+    else core[key] = state[key];
+  });
+  // 本体(資金など、サイズが増えない小さなフィールドのみ)はCookieへ
   try {
     const json = JSON.stringify(core);
     setCookie(SAVE_KEY, btoa(encodeURIComponent(json)), SAVE_DAYS);
   } catch (e) {
     console.warn('セーブに失敗しました', e);
   }
-  // 増え続けるリスト類(と、都市合併でも失われない名声ショップの購入済みリスト)はlocalStorageへ
+  // 増え続けるフィールド類はlocalStorageへ(容量が大きく上限を気にしなくてよい)
   try {
-    localStorage.setItem(LISTS_KEY, JSON.stringify({ achievements, upgrades, layout, fameShopUpgrades }));
+    localStorage.setItem(LISTS_KEY, JSON.stringify(lists));
   } catch (e) {
-    console.warn('実績/アップグレード/街並み配置/名声ショップの保存に失敗しました', e);
+    console.warn('施設/実績/アップグレード/街並み配置/名声ショップの保存に失敗しました', e);
   }
 }
 
@@ -96,20 +109,20 @@ function loadGame() {
     const json = decodeURIComponent(atob(raw));
     const core = JSON.parse(json);
     const def = defaultState();
-    // 欠損フィールドを補完(将来のアップデート対応)
-    const merged = Object.assign(def, core, { buildings: Object.assign(def.buildings, core.buildings || {}) });
+    const merged = Object.assign(def, core);
     try {
       const listsRaw = localStorage.getItem(LISTS_KEY);
       if (listsRaw) {
         const lists = JSON.parse(listsRaw);
-        merged.achievements = lists.achievements || [];
-        merged.upgrades = lists.upgrades || [];
-        merged.layout = lists.layout || [];
-        merged.fameShopUpgrades = lists.fameShopUpgrades || [];
+        GROWING_FIELDS.forEach((key) => {
+          if (lists[key] !== undefined) merged[key] = lists[key];
+        });
       }
     } catch (e) {
-      console.warn('実績/アップグレード/街並み配置/名声ショップの読み込みに失敗しました', e);
+      console.warn('施設/実績/アップグレード/街並み配置/名声ショップの読み込みに失敗しました', e);
     }
+    // 欠損フィールドを補完(将来のアップデートで施設が増えた場合など)
+    merged.buildings = Object.assign(def.buildings, merged.buildings || {});
     return merged;
   } catch (e) {
     console.warn('セーブデータの読み込みに失敗しました', e);
