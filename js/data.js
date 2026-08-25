@@ -4,19 +4,34 @@ const COST_MULT = 1.15;
 
 // 施設定義: id, 名前, 絵文字, 基礎コスト, 基礎収入/秒, 人口寄与, 幸福度寄与, 説明
 const BUILDINGS = [
-  { id: 'house',      name: '家',          emoji: '🏠', baseCost: 15,               baseIncome: 0.1,        pop: 2,   happiness: 0,  desc: '町の住民が暮らす家。少しずつ資金を稼ぐ。' },
-  { id: 'farm',       name: '畑',          emoji: '🌾', baseCost: 100,              baseIncome: 1,          pop: 1,   happiness: 0,  desc: '作物を育てて売る。雨の日は収穫アップ。' },
-  { id: 'park',       name: '公園',        emoji: '🌳', baseCost: 600,              baseIncome: 2,          pop: 0,   happiness: 3,  desc: '住民の幸福度がアップする憩いの場。' },
-  { id: 'shop',       name: '商店',        emoji: '🏪', baseCost: 1100,             baseIncome: 8,          pop: 3,   happiness: 0,  desc: '住民に商品を売って稼ぐ。' },
-  { id: 'school',     name: '学校',        emoji: '🏫', baseCost: 12000,            baseIncome: 47,         pop: 6,   happiness: 2,  desc: '教育で幸福度も少しアップ。' },
-  { id: 'factory',    name: '工場',        emoji: '🏭', baseCost: 130000,           baseIncome: 260,        pop: 9,   happiness: -1, desc: '大量生産できるがちょっとうるさい。' },
-  { id: 'hospital',   name: '病院',        emoji: '🏥', baseCost: 1400000,          baseIncome: 1400,       pop: 12,  happiness: 2,  desc: '住民の健康を守る安心施設。多いほど病気の流行を未然に防ぐ。' },
-  { id: 'station',    name: '駅',          emoji: '🚉', baseCost: 20000000,         baseIncome: 7800,       pop: 18,  happiness: 1,  desc: '人の流れを生み出す交通の要。' },
-  { id: 'amusement',  name: '遊園地',      emoji: '🎡', baseCost: 330000000,        baseIncome: 44000,      pop: 30,  happiness: 6,  desc: '町いちばんの人気スポット。' },
-  { id: 'office',     name: 'オフィスビル', emoji: '🏢', baseCost: 5100000000,       baseIncome: 260000,     pop: 55,  happiness: 0,  desc: '高層ビルで一気にビジネス拡大。' },
-  { id: 'stadium',    name: 'スタジアム',   emoji: '🏟️', baseCost: 75000000000,      baseIncome: 1600000,    pop: 90,  happiness: 4,  desc: '大きなイベントで町が盛り上がる。' },
-  { id: 'skyscraper', name: '摩天楼',      emoji: '🌆', baseCost: 1000000000000,    baseIncome: 10000000,   pop: 160, happiness: 2,  desc: '町のシンボルとなる超高層タワー。' },
-  { id: 'castle',     name: '城',          emoji: '🏰', baseCost: 14000000000000,   baseIncome: 65000000,   pop: 400, happiness: 10, desc: '伝説の城。首都の証。' }
+  { id: 'house',          name: '家',            emoji: '🏠', baseCost: 15,                  baseIncome: 0.1,        pop: 2,    happiness: 0,   desc: '町の住民が暮らす家。少しずつ資金を稼ぐ。' },
+  { id: 'yatai',          name: '屋台',          emoji: '🍢', baseCost: 45,                  baseIncome: 0.37,       pop: 1,    happiness: 1,   desc: '香ばしい匂いで人を集める屋台グルメ。手軽に稼げる。' },
+  { id: 'farm',           name: '畑',            emoji: '🌾', baseCost: 100,                 baseIncome: 1,          pop: 1,    happiness: 0,   desc: '作物を育てて売る。雨の日は収穫アップ。' },
+  { id: 'bakery',         name: 'パン屋',        emoji: '🥐', baseCost: 300,                 baseIncome: 1.7,        pop: 2,    happiness: 1,   desc: '焼きたてパンの香りが漂う人気店。住民の朝を彩る。' },
+  { id: 'park',           name: '公園',          emoji: '🌳', baseCost: 600,                 baseIncome: 2,          pop: 0,    happiness: 3,   desc: '住民の幸福度がアップする憩いの場。' },
+  { id: 'shop',           name: '商店',          emoji: '🏪', baseCost: 1100,                baseIncome: 8,          pop: 3,    happiness: 0,   desc: '住民に商品を売って稼ぐ。' },
+  { id: 'library',        name: '図書館',        emoji: '📚', baseCost: 4000,                baseIncome: 8,          pop: 2,    happiness: 5,   desc: '静かに知識を育む図書館。幸福度をじっくり底上げ。' },
+  { id: 'school',         name: '学校',          emoji: '🏫', baseCost: 12000,               baseIncome: 47,         pop: 6,    happiness: 2,   desc: '教育で幸福度も少しアップ。' },
+  { id: 'cafe',           name: 'カフェ',        emoji: '☕', baseCost: 40000,               baseIncome: 114,        pop: 4,    happiness: 2,   desc: '香り高いコーヒーで一息つける憩いの場所。' },
+  { id: 'factory',        name: '工場',          emoji: '🏭', baseCost: 130000,               baseIncome: 260,        pop: 9,    happiness: -1,  desc: '大量生産できるがちょっとうるさい。' },
+  { id: 'power_plant',    name: '発電所',        emoji: '⚡', baseCost: 450000,               baseIncome: 643,        pop: 6,    happiness: -2,  desc: '町の電力をまかなう大型施設。稼ぐが少し環境に負担。' },
+  { id: 'hospital',       name: '病院',          emoji: '🏥', baseCost: 1400000,              baseIncome: 1400,       pop: 12,   happiness: 2,   desc: '住民の健康を守る安心施設。多いほど病気の流行を未然に防ぐ。' },
+  { id: 'fire_station',   name: '消防署',        emoji: '🚒', baseCost: 5000000,              baseIncome: 3125,       pop: 9,    happiness: 3,   desc: '火事や事故から町を守る。住民の安心感がアップ。' },
+  { id: 'station',        name: '駅',            emoji: '🚉', baseCost: 20000000,             baseIncome: 7800,       pop: 18,   happiness: 1,   desc: '人の流れを生み出す交通の要。' },
+  { id: 'bank',           name: '銀行',          emoji: '🏦', baseCost: 70000000,             baseIncome: 16000,      pop: 14,   happiness: 0,   desc: '町のお金を管理する金融機関。着実に利益を生む。' },
+  { id: 'amusement',      name: '遊園地',        emoji: '🎡', baseCost: 330000000,            baseIncome: 44000,      pop: 30,   happiness: 6,   desc: '町いちばんの人気スポット。' },
+  { id: 'museum',         name: '美術館',        emoji: '🖼️', baseCost: 1200000000,           baseIncome: 99000,      pop: 22,   happiness: 8,   desc: '名画が並ぶ文化の殿堂。町の品格と幸福度が上がる。' },
+  { id: 'office',         name: 'オフィスビル',   emoji: '🏢', baseCost: 5100000000,           baseIncome: 260000,     pop: 55,   happiness: 0,   desc: '高層ビルで一気にビジネス拡大。' },
+  { id: 'university',     name: '大学',          emoji: '🎓', baseCost: 18000000000,          baseIncome: 594000,     pop: 38,   happiness: 3,   desc: '最先端の研究が進む高等学府。町の未来を切り拓く。' },
+  { id: 'stadium',        name: 'スタジアム',     emoji: '🏟️', baseCost: 75000000000,          baseIncome: 1600000,    pop: 90,   happiness: 4,   desc: '大きなイベントで町が盛り上がる。' },
+  { id: 'airport',        name: '空港',          emoji: '✈️', baseCost: 260000000000,         baseIncome: 3800000,    pop: 65,   happiness: 1,   desc: '世界中から人と物を呼び込む国際的な玄関口。' },
+  { id: 'skyscraper',     name: '摩天楼',        emoji: '🌆', baseCost: 1000000000000,        baseIncome: 10000000,   pop: 160,  happiness: 2,   desc: '町のシンボルとなる超高層タワー。' },
+  { id: 'aquarium',       name: '水族館',        emoji: '🐬', baseCost: 3600000000000,        baseIncome: 24500000,   pop: 110,  happiness: 9,   desc: '幻想的な海の世界。家族連れに大人気の癒やしスポット。' },
+  { id: 'castle',         name: '城',            emoji: '🏰', baseCost: 14000000000000,       baseIncome: 65000000,   pop: 400,  happiness: 10,  desc: '伝説の城。首都の証。' },
+  { id: 'space_center',   name: '宇宙基地',      emoji: '🚀', baseCost: 50000000000000,       baseIncome: 122000000,  pop: 700,  happiness: 5,   desc: 'ロケットが飛び立つ町の誇り。宇宙時代の幕開け。' },
+  { id: 'future_dome',    name: '未来都市ドーム', emoji: '🔮', baseCost: 180000000000000,      baseIncome: 231500000,  pop: 1300, happiness: 8,   desc: 'テクノロジーの結晶。ドームの中に理想郷が広がる。' },
+  { id: 'lunar_city',     name: '月面都市',      emoji: '🌕', baseCost: 650000000000000,      baseIncome: 440000000,  pop: 2400, happiness: 12,  desc: '地球を離れ月に築いた入植都市。人類の新たな一歩。' },
+  { id: 'galaxy_station',  name: '銀河ステーション', emoji: '🌌', baseCost: 2400000000000000,   baseIncome: 855000000,  pop: 4500, happiness: 15,  desc: '銀河の彼方まで町の名を轟かせる究極の到達点。' }
 ];
 
 function buildingCost(building, currentCount, qty) {
@@ -89,6 +104,35 @@ function rankIndexFor(lifetimeMoney) {
   let idx = 0;
   RANK_TIERS.forEach((r, i) => { if (lifetimeMoney >= r.min) idx = i; });
   return idx;
+}
+
+// 名声ショップ: 都市合併で得た名声ポイントを使って買う恒久アップグレード(合併しても失われない)。
+// tierは解放に必要な累計都市合併回数(FAME_SHOP_TIER_REQUIREMENTのインデックスに対応)で、
+// 周回(都市合併)を重ねるほど新しいティアが開放されていくエンドコンテンツ。
+const FAME_SHOP_TIER_REQUIREMENT = [0, 3, 7, 15];
+const FAME_SHOP = [
+  // Tier 1: いつでも購入可(名声ポイントさえあれば)
+  { id: 'fame_income_1',  tier: 0, cost: 5,   name: '💹 効率化都市計画 I',   desc: '全施設の収入が永久に+10%される。',                       effect: { type: 'incomeMult', value: 1.10 } },
+  { id: 'fame_click_1',   tier: 0, cost: 5,   name: '👆 熟練の握手',         desc: '町役場クリックの獲得資金が永久に+20%される。',             effect: { type: 'clickMult', value: 1.20 } },
+  { id: 'fame_petition_1',tier: 0, cost: 8,   name: '😊 御用聞きの心得',     desc: '陳情に応えた時の幸福度上昇が永久に+20%される。',           effect: { type: 'petitionAgreeMult', value: 1.20 } },
+  { id: 'fame_rain_1',    tier: 0, cost: 8,   name: '☀️ 気象予報士常駐',     desc: '恵みの雨イベントが永久に約25%発生しやすくなる。',           effect: { type: 'rainFreqMult', value: 0.75 } },
+  // Tier 2: 都市合併3回で解放
+  { id: 'fame_income_2',  tier: 1, cost: 20,  name: '💹 効率化都市計画 II',  desc: '全施設の収入が永久にさらに+15%される。',                   effect: { type: 'incomeMult', value: 1.15 } },
+  { id: 'fame_offline_1', tier: 1, cost: 25,  name: '🌙 越境オフライン協定', desc: 'オフライン収益の上限が8時間→16時間に延長される。',           effect: { type: 'offlineCapHours', value: 16 } },
+  { id: 'fame_hospital_1',tier: 1, cost: 25,  name: '🛡️ 医療ネットワーク強化', desc: '病院による病気予防の効果が永久に+30%される。',            effect: { type: 'preventionMult', value: 1.30 } },
+  { id: 'fame_golden_1',  tier: 1, cost: 20,  name: '✨ ゴールデンタイム延長', desc: 'ゴールデンビルの出現時間が永久に+50%延長される。',         effect: { type: 'goldenDurationMult', value: 1.5 } },
+  // Tier 3: 都市合併7回で解放
+  { id: 'fame_income_3',  tier: 2, cost: 60,  name: '💹 効率化都市計画 III', desc: '全施設の収入が永久にさらに+20%される。',                   effect: { type: 'incomeMult', value: 1.20 } },
+  { id: 'fame_autobuy',   tier: 2, cost: 80,  name: '🤖 執事の自動購入',     desc: '買える中で最も安い施設を自動で購入してくれる執事を雇う。',   effect: { type: 'autoBuy', value: true } },
+  { id: 'fame_offline_2', tier: 2, cost: 60,  name: '🌙 越境オフライン協定 II', desc: 'オフライン収益の上限が16時間→24時間に延長される。',      effect: { type: 'offlineCapHours', value: 24 } },
+  { id: 'fame_golden_2',  tier: 2, cost: 50,  name: '✨ ゴールデンビル頻発', desc: 'ゴールデンビルが永久に約20%出現しやすくなる。',            effect: { type: 'goldenFreqMult', value: 0.8 } },
+  // Tier 4: 都市合併15回で解放(真のエンドコンテンツ)
+  { id: 'fame_income_4',  tier: 3, cost: 200, name: '💹 効率化都市計画 IV',  desc: '全施設の収入が永久にさらに+30%される。',                   effect: { type: 'incomeMult', value: 1.30 } },
+  { id: 'fame_happiness_1',tier: 3, cost: 250, name: '🌌 銀河評議会の椅子', desc: '町の幸福度基準値が永久に+15される。',                     effect: { type: 'happinessBonusFlat', value: 15 } },
+  { id: 'fame_prestige_th',tier: 3, cost: 300, name: '👑 伝説の統治',       desc: '都市合併に必要な累計資金がずっと10%引き下げられる。',       effect: { type: 'prestigeThresholdMult', value: 0.9 } }
+];
+function fameShopTierUnlocked(tier, prestigeCount) {
+  return prestigeCount >= FAME_SHOP_TIER_REQUIREMENT[tier];
 }
 
 // デイリーミッションの候補プール。tierで報酬倍率が変わる
@@ -261,6 +305,7 @@ function generateAchievements() {
   if (BGM_TRACKS.length > 1) {
     list.push({ id: 'ach_bgm_collector', name: '🎶 BGMコレクター', desc: '全てのBGMトラックを解放する', check: (s) => (s.bgmUnlocked || []).length >= BGM_TRACKS.length });
   }
+  list.push({ id: 'ach_fame_shop_complete', name: '💎 名声の頂点', desc: '名声ショップの全アップグレードを取得する', check: (s) => (s.fameShopUpgrades || []).length >= FAME_SHOP.length });
   list.push({ id: 'ach_rank_top', name: `👑 ${RANK_TIERS[RANK_TIERS.length - 1].title}に到達`, desc: `最高位の称号「${RANK_TIERS[RANK_TIERS.length - 1].title}」を獲得する`, check: (s) => rankIndexFor(s.lifetimeMoney) >= RANK_TIERS.length - 1 });
   list.push({ id: 'ach_season_cold', name: '🥶 冬の備え', desc: '冬の陳情で「暖房設備を導入する」を選ぶ', check: (s) => (s.seasonalComplaintsResolved || []).includes('cold') });
   list.push({ id: 'ach_season_heat', name: '🥵 夏の備え', desc: '夏の陳情で「冷房設備を導入する」を選ぶ', check: (s) => (s.seasonalComplaintsResolved || []).includes('heat') });

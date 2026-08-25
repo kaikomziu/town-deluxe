@@ -31,6 +31,7 @@ const Game = (() => {
     schedulePetition();
     scheduleSickness();
     setInterval(tick, 100);
+    scheduleAutoBuy();
     setInterval(() => { saveGame(state); emit('event', { type: 'autosave' }); }, 10000);
     window.addEventListener('beforeunload', () => saveGame(state));
     document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(state); });
@@ -38,7 +39,8 @@ const Game = (() => {
 
   function computeOfflineEarnings() {
     const elapsedMs = Date.now() - (state.lastSave || Date.now());
-    const elapsedSec = Math.min(elapsedMs / 1000, 8 * 3600); // 最大8時間分
+    const capHours = fameEffectMax('offlineCapHours', 8);
+    const elapsedSec = Math.min(elapsedMs / 1000, capHours * 3600); // 名声ショップで延長可能(基本8時間)
     if (elapsedSec > 30) {
       const income = incomePerSec();
       const earned = income * elapsedSec;
@@ -77,14 +79,14 @@ const Game = (() => {
       const up = UPGRADES.find((u) => u.id === uid);
       if (up && up.effect.type === 'click') mult *= up.effect.value;
     });
-    return mult;
+    return mult * fameEffectMult('clickMult');
   }
 
   function globalMultiplier() {
     const prestigeMult = 1 + state.famePoints * 0.02;
     const happinessMult = 1 + state.happiness / 100;
     const rainMult = Date.now() < rainUntil ? 1.5 : 1;
-    return prestigeMult * happinessMult * rainMult;
+    return prestigeMult * happinessMult * rainMult * fameEffectMult('incomeMult');
   }
 
   function incomePerSec() {
@@ -96,7 +98,7 @@ const Game = (() => {
   }
 
   function recomputeStats() {
-    let pop = 0, happiness = 50 + (state.happinessBonus || 0);
+    let pop = 0, happiness = 50 + (state.happinessBonus || 0) + fameEffectSum('happinessBonusFlat', 0);
     BUILDINGS.forEach((b) => {
       const n = buildingCount(b.id);
       pop += n * b.pop;
@@ -131,25 +133,41 @@ const Game = (() => {
 
   function canAfford(cost) { return state.money >= cost; }
 
-  function buyBuilding(id, qty) {
+  function buyBuilding(id, qty, opts) {
+    opts = opts || {};
     const b = BUILDINGS.find((x) => x.id === id);
     if (!b) return false;
     const count = buildingCount(id);
     const actualQty = qty === 'max' ? maxAffordable(b, count, state.money) : qty;
-    if (actualQty <= 0) { Effects.sound('error'); return false; }
+    if (actualQty <= 0) { if (!opts.silent) Effects.sound('error'); return false; }
     const cost = buildingCost(b, count, actualQty);
-    if (!canAfford(cost)) { Effects.sound('error'); return false; }
+    if (!canAfford(cost)) { if (!opts.silent) Effects.sound('error'); return false; }
     state.money -= cost;
     state.buildings[id] = count + actualQty;
     addLayoutEntries(id, actualQty);
     addDailyProgress('buildingsBoughtToday', actualQty);
     recomputeStats();
-    Effects.sound('buy');
-    emit('buy', { id, qty: actualQty, cost });
-    if ((count + actualQty) % 10 === 0 || count === 0) {
-      emit('event', { type: 'milestone', building: b, count: count + actualQty });
+    emit('buy', { id, qty: actualQty, cost, silent: !!opts.silent });
+    if (!opts.silent) {
+      Effects.sound('buy');
+      if ((count + actualQty) % 10 === 0 || count === 0) {
+        emit('event', { type: 'milestone', building: b, count: count + actualQty });
+      }
     }
     return true;
+  }
+
+  // --- 執事の自動購入(名声ショップで解放): 数秒おきに、買える中で最も安い施設を1つ買う ---
+  function scheduleAutoBuy() {
+    setInterval(() => {
+      if (!fameHasEffect('autoBuy')) return;
+      let best = null, bestCost = Infinity;
+      BUILDINGS.forEach((b) => {
+        const cost = buildingCost(b, buildingCount(b.id), 1);
+        if (cost < bestCost && canAfford(cost)) { bestCost = cost; best = b; }
+      });
+      if (best) buyBuilding(best.id, 1, { silent: true });
+    }, 4000);
   }
 
   function buyUpgrade(id) {
@@ -190,14 +208,14 @@ const Game = (() => {
 
   // --- ゴールデンビル ---
   function scheduleGolden() {
-    const delay = 60000 + Math.random() * 60000; // 60~120秒
+    const delay = (60000 + Math.random() * 60000) * fameEffectMult('goldenFreqMult'); // 60~120秒(名声ショップで短縮可能)
     setTimeout(() => {
       if (!goldenBuilding) spawnGolden();
       scheduleGolden();
     }, delay);
   }
   function spawnGolden() {
-    goldenBuilding = { expiresAt: Date.now() + 15000 };
+    goldenBuilding = { expiresAt: Date.now() + 15000 * fameEffectMult('goldenDurationMult') };
     emit('event', { type: 'golden-spawn' });
   }
   function checkGolden() {
@@ -223,7 +241,7 @@ const Game = (() => {
 
   // --- 雨 ---
   function scheduleRain() {
-    const delay = 90000 + Math.random() * 120000;
+    const delay = (90000 + Math.random() * 120000) * fameEffectMult('rainFreqMult');
     setTimeout(() => {
       rainUntil = Date.now() + 45000;
       emit('event', { type: 'rain-start' });
@@ -292,14 +310,15 @@ const Game = (() => {
     if (agree) {
       const cost = petitionCost();
       if (!canAfford(cost)) { Effects.sound('error'); return null; }
+      const happinessGain = template.agreeHappiness * fameEffectMult('petitionAgreeMult');
       state.money -= cost;
-      state.happinessBonus = Math.max(-100, Math.min(100, (state.happinessBonus || 0) + template.agreeHappiness));
+      state.happinessBonus = Math.max(-100, Math.min(100, (state.happinessBonus || 0) + happinessGain));
       state.petitionsAnswered++;
       addDailyProgress('petitionsToday', 1);
       if (template.season && !state.seasonalComplaintsResolved.includes(template.id)) {
         state.seasonalComplaintsResolved.push(template.id);
       }
-      result = { agree: true, cost, happiness: template.agreeHappiness, template };
+      result = { agree: true, cost, happiness: happinessGain, template };
     } else {
       state.happinessBonus = Math.max(-100, Math.min(100, (state.happinessBonus || 0) + template.ignoreHappiness));
       state.petitionsIgnored++;
@@ -325,7 +344,7 @@ const Game = (() => {
     return Math.min(cap, buildingCount(buildingId) * ratePerBuilding);
   }
   function sicknessPreventionChance() {
-    return preventionChance('hospital', 0.12, 0.95);
+    return preventionChance('hospital', 0.12 * fameEffectMult('preventionMult'), 0.95);
   }
   function attemptSickness() {
     if (Date.now() < state.sicknessUntil) return; // 既に流行中なら重複させない
@@ -517,8 +536,49 @@ const Game = (() => {
     });
   }
 
+  // --- 名声ショップ(都市合併で得た名声ポイントを使う恒久アップグレード) ---
+  // famePointsは収入倍率(+2%/pt)の源泉として都市合併ごとに再計算される「総獲得量」なので、
+  // ショップの購入では減らさず、代わりにfameSpent(使用済み量)を積み上げて差分を「利用可能額」とする。
+  function fameAvailable() { return state.famePoints - (state.fameSpent || 0); }
+  function isFameShopTierUnlocked(tier) { return fameShopTierUnlocked(tier, state.prestigeCount); }
+  function isFameUpgradeOwned(id) { return (state.fameShopUpgrades || []).includes(id); }
+  function buyFameUpgrade(id) {
+    const item = FAME_SHOP.find((f) => f.id === id);
+    if (!item) return false;
+    if (isFameUpgradeOwned(id)) return false;
+    if (!isFameShopTierUnlocked(item.tier)) return false;
+    if (fameAvailable() < item.cost) { Effects.sound('error'); return false; }
+    state.fameSpent = (state.fameSpent || 0) + item.cost;
+    state.fameShopUpgrades.push(id);
+    recomputeStats();
+    Effects.sound('buy');
+    emit('event', { type: 'fame-upgrade-bought', item });
+    return true;
+  }
+  function fameOwnedItems() {
+    return (state.fameShopUpgrades || []).map((id) => FAME_SHOP.find((f) => f.id === id)).filter(Boolean);
+  }
+  function fameEffectMult(type) {
+    let mult = 1;
+    fameOwnedItems().forEach((item) => { if (item.effect.type === type) mult *= item.effect.value; });
+    return mult;
+  }
+  function fameEffectMax(type, base) {
+    let best = base;
+    fameOwnedItems().forEach((item) => { if (item.effect.type === type) best = Math.max(best, item.effect.value); });
+    return best;
+  }
+  function fameEffectSum(type, base) {
+    let total = base;
+    fameOwnedItems().forEach((item) => { if (item.effect.type === type) total += item.effect.value; });
+    return total;
+  }
+  function fameHasEffect(type) {
+    return fameOwnedItems().some((item) => item.effect.type === type);
+  }
+
   // --- 都市合併(プレステージ) ---
-  function prestigeThreshold() { return 1000000; }
+  function prestigeThreshold() { return 1000000 * fameEffectMult('prestigeThresholdMult'); }
   function potentialFame() {
     if (state.lifetimeMoney < prestigeThreshold()) return 0;
     return Math.floor(Math.sqrt(state.lifetimeMoney / 1000000));
@@ -596,6 +656,7 @@ const Game = (() => {
     getDaily: () => state.daily, claimMission,
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
+    fameAvailable, isFameShopTierUnlocked, isFameUpgradeOwned, buyFameUpgrade,
     toggleMute, toggleBgmMute, setBgmVolume, buyBgmTrack, selectBgm, doReset, saveNow: () => saveGame(state)
   };
 })();
