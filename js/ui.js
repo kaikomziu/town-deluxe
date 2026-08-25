@@ -316,15 +316,13 @@ const UI = (() => {
       const card = document.createElement('div');
       card.className = 'card' + (affordable ? '' : ' disabled');
       const perEach = b.baseIncome * Game.buildingMultiplier(b.id) * Game.globalMultiplier();
-      const districtMult = Game.districtMultiplier(b.id);
-      const districtBadge = districtMult > 1.001 ? ` <span class="district-badge" title="近くにまとめて配置すると発生する地区ボーナス">🏘️+${Math.round((districtMult - 1) * 100)}%</span>` : '';
       const preventBadge = b.id === 'hospital' ? ` <span class="district-badge" title="病気イベントの発生自体を未然に防ぐ確率(病院が多いほど上昇、最大95%)">🛡️予防${Math.round(Game.sicknessPreventionChance() * 100)}%</span>` : '';
       card.innerHTML = `
         <div class="card-icon">${b.emoji}</div>
         <div class="card-body">
           <div class="card-title">${b.name} <span class="card-count">×${count}</span></div>
           <div class="card-desc">${b.desc}</div>
-          <div class="card-sub">${formatNum(perEach)}円/秒・個${districtBadge}${preventBadge}</div>
+          <div class="card-sub">${formatNum(perEach)}円/秒・個${preventBadge}</div>
         </div>
         <button class="buy-btn" ${affordable ? '' : 'disabled'}>${formatNum(cost)}円</button>
       `;
@@ -477,7 +475,7 @@ const UI = (() => {
     });
   }
 
-  // --- 街並みシーン(ドラッグ配置対応) ---
+  // --- 街並みシーン(購入時にランダムな位置へ設置) ---
   let renderedLayoutIds = new Set();
   function renderBuildingsLayer() {
     const layer = $('buildings-layer');
@@ -512,8 +510,6 @@ const UI = (() => {
       span.style.left = `${entry.x}%`;
       span.style.top = `${entry.y}%`;
       span.style.animationDelay = `${Math.random() * 2000}ms`;
-      span.style.touchAction = 'none';
-      makeDraggable(span, entry);
       layer.appendChild(span);
       renderedLayoutIds.add(entry.id);
       // 建設中演出: クレーンアイコンで少し揺れた後、実際の建物にすり替わる
@@ -549,46 +545,6 @@ const UI = (() => {
     badge.textContent = `+${formatNum(totalHidden)}軒`;
   }
 
-  function makeDraggable(el, entry) {
-    let dragging = false, moved = false, startX = 0, startY = 0, origX = entry.x, origY = entry.y;
-    el.addEventListener('pointerdown', (e) => {
-      dragging = true; moved = false;
-      origX = entry.x; origY = entry.y;
-      startX = e.clientX; startY = e.clientY;
-      try { el.setPointerCapture(e.pointerId); } catch (err) { /* 一部環境でキャプチャ不可でも致命的ではないため無視 */ }
-      el.classList.add('dragging');
-    });
-    el.addEventListener('pointermove', (e) => {
-      if (!dragging) return;
-      const layerRect = $('buildings-layer').getBoundingClientRect();
-      const dxPct = ((e.clientX - startX) / layerRect.width) * 100;
-      const dyPct = ((e.clientY - startY) / layerRect.height) * 100;
-      if (Math.abs(dxPct) > 0.5 || Math.abs(dyPct) > 0.5) moved = true;
-      // ドラッグ中はマウスに1:1で追従させる(町役場ゾーン回避を毎フレーム掛けると
-      // 表示と計算がズレて「動かせない」ように感じてしまうため、離した瞬間だけ補正する)
-      const nx = Math.min(97, Math.max(3, origX + dxPct));
-      const ny = Math.min(97, Math.max(3, origY + dyPct));
-      el.style.left = `${nx}%`;
-      el.style.top = `${ny}%`;
-      entry.x = nx; entry.y = ny;
-    });
-    const finishDrag = (e) => {
-      if (!dragging) return;
-      dragging = false;
-      el.classList.remove('dragging');
-      if (moved) {
-        Game.updateLayoutPosition(entry.id, entry.x, entry.y); // 内部で町役場ゾーン回避を適用
-        const saved = Game.getLayout().find((x) => x.id === entry.id);
-        if (saved) {
-          entry.x = saved.x; entry.y = saved.y;
-          el.style.left = `${saved.x}%`;
-          el.style.top = `${saved.y}%`;
-        }
-      }
-    };
-    el.addEventListener('pointerup', finishDrag);
-    el.addEventListener('pointercancel', finishDrag);
-  }
 
   function renderSky() {
     const hour = new Date().getHours();

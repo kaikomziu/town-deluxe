@@ -68,26 +68,7 @@ const Game = (() => {
       const up = UPGRADES.find((u) => u.id === uid);
       if (up && up.effect.type === 'mult' && up.effect.buildingId === id) mult *= up.effect.value;
     });
-    return mult * districtMultiplier(id);
-  }
-
-  // --- 地区ボーナス: 同じ施設を近くに固めて配置すると収入アップ ---
-  const DISTRICT_RADIUS = 16;
-  const DISTRICT_MAX_BONUS = 0.2; // 最大+20%
-  function districtMultiplier(id) {
-    const entries = (state.layout || []).filter((e) => e.type === id);
-    if (entries.length < 3) return 1;
-    let clustered = 0;
-    entries.forEach((e) => {
-      let neighbors = 0;
-      entries.forEach((o) => {
-        if (o === e) return;
-        const dx = o.x - e.x, dy = o.y - e.y;
-        if (Math.sqrt(dx * dx + dy * dy) <= DISTRICT_RADIUS) neighbors++;
-      });
-      if (neighbors >= 2) clustered++;
-    });
-    return 1 + (clustered / entries.length) * DISTRICT_MAX_BONUS;
+    return mult;
   }
 
   function clickMultiplier() {
@@ -144,7 +125,6 @@ const Game = (() => {
     checkSickness();
     checkRank();
     checkDailyReset();
-    checkDistrictFirstTime();
     checkAchievements();
     emit('tick', { income, delta });
   }
@@ -417,12 +397,10 @@ const Game = (() => {
       e.x = fixed.x; e.y = fixed.y;
     });
   }
-  function defaultLayoutPosition(index) {
-    const cols = 14;
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    let x = (col + 0.5) * (100 / cols) + (Math.random() - 0.5) * 3;
-    let y = Math.max(8, 92 - row * 10) + (Math.random() - 0.5) * 3;
+  // ドラッグ配置は廃止し、購入時にランダムな位置へ設置する(見た目のみ・経済効果なし)
+  function defaultLayoutPosition() {
+    const x = 4 + Math.random() * 92;
+    const y = 6 + Math.random() * 90;
     return sanitizeLayoutPosition(x, y);
   }
   function addLayoutEntries(buildingId, qty) {
@@ -430,15 +408,8 @@ const Game = (() => {
     const toAdd = Math.max(0, Math.min(qty, MAX_LAYOUT_PER_BUILDING - existing));
     for (let i = 0; i < toAdd; i++) {
       const idx = state.layout.length;
-      const pos = defaultLayoutPosition(idx);
+      const pos = defaultLayoutPosition();
       state.layout.push({ id: `b${idx}_${buildingId}_${Date.now().toString(36)}${i}`, type: buildingId, x: pos.x, y: pos.y });
-    }
-  }
-  function updateLayoutPosition(id, x, y) {
-    const entry = state.layout.find((e) => e.id === id);
-    if (entry) {
-      const fixed = sanitizeLayoutPosition(x, y);
-      entry.x = fixed.x; entry.y = fixed.y;
     }
   }
 
@@ -448,13 +419,6 @@ const Game = (() => {
     if (idx > lastRankIndex) {
       lastRankIndex = idx;
       emit('event', { type: 'rank-up', rank: RANK_TIERS[idx] });
-    }
-  }
-
-  function checkDistrictFirstTime() {
-    if (state.districtBonusEverActive) return;
-    if (BUILDINGS.some((b) => districtMultiplier(b.id) > 1.001)) {
-      state.districtBonusEverActive = true;
     }
   }
 
@@ -621,7 +585,7 @@ const Game = (() => {
     isRaining: () => Date.now() < rainUntil,
     getPetition: () => petition, resolvePetition, petitionCost,
     isSick: () => Date.now() < state.sicknessUntil, cureSickness, sicknessCureCost, sicknessPreventionChance,
-    getLayout: () => state.layout, updateLayoutPosition, sanitizeLayoutPosition, districtMultiplier,
+    getLayout: () => state.layout,
     getRank: () => RANK_TIERS[rankIndexFor(state.lifetimeMoney)],
     getDaily: () => state.daily, claimMission,
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,

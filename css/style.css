@@ -116,16 +116,11 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 .building-icon {
   position: absolute; font-size: 22px; line-height: 1; transform: translate(-50%, -50%);
-  cursor: grab; touch-action: none; user-select: none;
+  user-select: none;
   animation: bob 2.2s ease-in-out infinite;
   filter: drop-shadow(0 2px 3px rgba(0,0,0,.35));
 }
 .building-icon:hover { animation-play-state: paused; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)) drop-shadow(0 0 6px rgba(255,255,255,.6)); }
-.building-icon.dragging {
-  cursor: grabbing; animation-play-state: paused; z-index: 15;
-  transform: translate(-50%, -50%) scale(1.25);
-  filter: drop-shadow(0 6px 10px rgba(0,0,0,.5));
-}
 @keyframes bob { 0%, 100% { transform: translate(-50%, -50%) translateY(0); } 50% { transform: translate(-50%, -50%) translateY(-4px); } }
 .building-icon.constructing { animation: construct-shake .3s ease-in-out infinite; opacity: .9; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)) grayscale(.2); }
 .building-icon.construction-complete { animation: construct-pop .5s ease; }
@@ -136,13 +131,16 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   background: rgba(0,0,0,.4); border-radius: 8px; padding: 3px 8px; color: #fff; z-index: 6;
 }
 
-/* 町役場: ホバー演出は不具合報告が続いたため廃止。クリック時のバンプ演出のみ残す。 */
+/* 町役場: ホバー演出は不具合報告が続いたため廃止。クリック時のバンプ演出のみ残す。
+   共通の button:hover(transform: translateY(-1px))が中央寄せ用のtranslateX(-50%)を
+   上書きして右にズレていたのが真因だったため、IDセレクタで確実に無効化する。 */
 .town-hall {
   position: absolute; left: 50%; bottom: 6%; z-index: 8;
   transform: translateX(-50%);
   font-size: 64px; line-height: 1; background: none; padding: 0; border: 0;
   filter: drop-shadow(0 6px 10px rgba(0,0,0,.4));
 }
+#town-hall:hover { transform: translateX(-50%); background: none; }
 .town-hall-icon { display: inline-block; animation: idle-bob 3s ease-in-out infinite; }
 .town-hall-icon.bump { animation: bump-anim .25s ease; }
 @keyframes idle-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
