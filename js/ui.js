@@ -35,6 +35,16 @@ const UI = (() => {
     setInterval(renderSky, 5000);
     setInterval(renderSeason, 60000);
     setInterval(updatePetitionTimer, 200);
+    // 施設/アップグレード/都市合併タブは所持金の増加で購入可否(disabled状態)が変わるが、
+    // onTickではトップバーしか更新していないため、tickだけだと「見た目は買えないまま」
+    // になり、タブを切り替えるまで反映されなかった。表示中のタブに限り1秒おきに再描画する。
+    setInterval(refreshActiveTabAfford, 1000);
+  }
+
+  function refreshActiveTabAfford() {
+    if (activeTab === 'build') renderBuild();
+    else if (activeTab === 'upgrade') renderUpgrades();
+    else if (activeTab === 'prestige') renderPrestige();
   }
 
   function updatePetitionTimer() {

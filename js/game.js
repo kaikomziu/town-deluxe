@@ -14,7 +14,13 @@ const Game = (() => {
   let listeners = { tick: [], buy: [], achievement: [], prestige: [], event: [] };
 
   function on(evt, fn) { listeners[evt].push(fn); }
-  function emit(evt, data) { listeners[evt].forEach((fn) => fn(data)); }
+  // リスナー1つが例外を投げても他のリスナー(UI再描画など)や呼び出し元の処理が
+  // 止まらないよう、各リスナーを個別にtry/catchで保護する。
+  function emit(evt, data) {
+    listeners[evt].forEach((fn) => {
+      try { fn(data); } catch (e) { console.error(`[emit:${evt}]`, e); }
+    });
+  }
 
   function init() {
     state = loadGame() || defaultState();
@@ -157,29 +163,42 @@ const Game = (() => {
     return true;
   }
 
-  // --- 執事の自動購入(名声ショップで解放): 数秒おきに、買える中で最も安い施設を1つ買う ---
+  // --- 執事の自動購入(名声ショップで解放): 数秒おきに、買える中で最も安い施設・アップグレードを買う ---
+  // 名声ショップ「執事の増員」でautoBuyIntervalMultが縮まるため、固定setIntervalではなく
+  // 毎回間隔を計算し直すsetTimeoutの再帰呼び出しにしている。
   function scheduleAutoBuy() {
-    setInterval(() => {
-      if (!fameHasEffect('autoBuy')) return;
-      let best = null, bestCost = Infinity;
-      BUILDINGS.forEach((b) => {
-        const cost = buildingCost(b, buildingCount(b.id), 1);
-        if (cost < bestCost && canAfford(cost)) { bestCost = cost; best = b; }
-      });
-      if (best) buyBuilding(best.id, 1, { silent: true });
-    }, 4000);
+    const delay = Math.max(1000, 4000 * fameEffectMult('autoBuyIntervalMult'));
+    setTimeout(() => {
+      if (fameHasEffect('autoBuy')) {
+        let best = null, bestCost = Infinity;
+        BUILDINGS.forEach((b) => {
+          const cost = buildingCost(b, buildingCount(b.id), 1);
+          if (cost < bestCost && canAfford(cost)) { bestCost = cost; best = b; }
+        });
+        if (best) buyBuilding(best.id, 1, { silent: true });
+      }
+      if (fameHasEffect('autoBuyUpgrades')) {
+        const affordable = UPGRADES.filter((u) => isUpgradeUnlocked(u) && !state.upgrades.includes(u.id) && canAfford(u.cost));
+        if (affordable.length) {
+          const cheapest = affordable.reduce((a, b) => (a.cost < b.cost ? a : b));
+          buyUpgrade(cheapest.id, { silent: true });
+        }
+      }
+      scheduleAutoBuy();
+    }, delay);
   }
 
-  function buyUpgrade(id) {
+  function buyUpgrade(id, opts) {
+    opts = opts || {};
     const up = UPGRADES.find((u) => u.id === id);
     if (!up) return false;
     if (state.upgrades.includes(id)) return false;
-    if (!canAfford(up.cost)) { Effects.sound('error'); return false; }
+    if (!canAfford(up.cost)) { if (!opts.silent) Effects.sound('error'); return false; }
     state.money -= up.cost;
     state.upgrades.push(id);
     addDailyProgress('upgradesToday', 1);
-    Effects.sound('buy');
-    emit('buy', { id, upgrade: true });
+    if (!opts.silent) Effects.sound('buy');
+    emit('buy', { id, upgrade: true, silent: !!opts.silent });
     return true;
   }
 
@@ -252,7 +271,7 @@ const Game = (() => {
 
   // --- UFO ---
   function scheduleUfo() {
-    const delay = 180000 + Math.random() * 240000;
+    const delay = (180000 + Math.random() * 240000) * fameEffectMult('ufoFreqMult');
     setTimeout(() => {
       ufo = { expiresAt: Date.now() + 8000 };
       emit('event', { type: 'ufo-spawn' });
@@ -287,7 +306,7 @@ const Game = (() => {
     const seasonal = SEASONAL_COMPLAINTS.filter((c) => c.season === season);
     const pool = COMPLAINTS.concat(seasonal);
     const template = pool[Math.floor(Math.random() * pool.length)];
-    petition = { template, expiresAt: Date.now() + 25000, createdAt: Date.now() };
+    petition = { template, expiresAt: Date.now() + 25000 * fameEffectMult('petitionTimeMult'), createdAt: Date.now() };
     emit('event', { type: 'petition-spawn', petition });
   }
   function petitionCost() {
@@ -364,9 +383,9 @@ const Game = (() => {
     if (Date.now() < state.sicknessUntil) return; // 既に流行中なら重複させない
     const power = medicalPower();
     const baseSeverity = 18 + Math.random() * 10;
-    const severity = Math.max(3, baseSeverity - power * 12.5);
+    const severity = Math.max(3, (baseSeverity - power * 12.5) * fameEffectMult('sicknessSeverityMult'));
     const baseDuration = 50000 + Math.random() * 30000;
-    const duration = Math.max(15000, baseDuration - power * 20833.33);
+    const duration = Math.max(15000, (baseDuration - power * 20833.33) * fameEffectMult('sicknessDurationMult'));
     const info = SICKNESS_EVENTS[Math.floor(Math.random() * SICKNESS_EVENTS.length)];
     state.sicknessUntil = Date.now() + duration;
     state.sicknessSeverity = severity;
@@ -470,7 +489,7 @@ const Game = (() => {
     const income = incomePerSec();
     return pool.slice(0, 3).map((m) => {
       const target = m.dynamicTarget ? Math.max(500, Math.round(income * 150)) : m.target;
-      const reward = Math.max(m.tier === 2 ? 200 : 80, Math.round(income * (m.tier === 2 ? 60 : 25)));
+      const reward = Math.max(m.tier === 2 ? 200 : 80, Math.round(income * (m.tier === 2 ? 60 : 25) * fameEffectMult('missionRewardMult')));
       return { id: m.id, metric: m.metric, target, reward, claimed: false, icon: m.icon, label: m.label(target) };
     });
   }
@@ -585,7 +604,7 @@ const Game = (() => {
   function prestigeThreshold() { return 1000000 * fameEffectMult('prestigeThresholdMult'); }
   function potentialFame() {
     if (state.lifetimeMoney < prestigeThreshold()) return 0;
-    return Math.floor(Math.sqrt(state.lifetimeMoney / 1000000));
+    return Math.floor(Math.sqrt(state.lifetimeMoney / 1000000) * fameEffectMult('fameGainMult'));
   }
   function canPrestige() { return potentialFame() > state.famePoints; }
   function doPrestige() {
