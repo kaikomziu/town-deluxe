@@ -206,7 +206,7 @@ function generateAchievements() {
     [1000, '小遣い稼ぎ'], [10000, '町内で評判'], [100000, '商才あり'],
     [1000000, '百万長者'], [10000000, '千万長者'], [100000000, '億万長者'],
     [1000000000, '十億長者'], [10000000000, '百億長者'], [1000000000000, '兆越えの資産家'],
-    [1000000000000000, '町を超えた存在']
+    [1000000000000000, '町を超えた存在'], [1000000000000000000, '神話級の富豪']
   ];
   moneyMilestones.forEach(([v, name]) => {
     list.push({
@@ -217,7 +217,7 @@ function generateAchievements() {
   });
 
   BUILDINGS.forEach((b) => {
-    [1, 10, 25, 50, 100, 200].forEach((n) => {
+    [1, 10, 25, 50, 100, 200, 500].forEach((n) => {
       list.push({
         id: `ach_build_${b.id}_${n}`, name: `${b.emoji} ${b.name}コレクター Lv.${n}`,
         desc: `${b.name}を${n}個所有する`,
@@ -226,7 +226,7 @@ function generateAchievements() {
     });
   });
 
-  const popMilestones = [50, 200, 1000, 5000, 20000, 100000];
+  const popMilestones = [50, 200, 1000, 5000, 20000, 100000, 500000];
   popMilestones.forEach((v) => {
     list.push({
       id: `ach_pop_${v}`, name: `👥 人口${formatNum(v)}人突破`,
@@ -235,7 +235,7 @@ function generateAchievements() {
     });
   });
 
-  [1, 5, 10, 25, 50].forEach((v) => {
+  [1, 5, 10, 25, 50, 100].forEach((v) => {
     list.push({
       id: `ach_prestige_${v}`, name: `🌟 都市合併 ${v}回目`,
       desc: `都市合併を${v}回行う`,
@@ -243,7 +243,7 @@ function generateAchievements() {
     });
   });
 
-  [100, 1000, 10000, 50000].forEach((v) => {
+  [100, 1000, 10000, 50000, 100000, 500000, 1000000].forEach((v) => {
     list.push({
       id: `ach_click_${v}`, name: `👆 クリック${formatNum(v)}回`,
       desc: `町役場を${formatNum(v)}回クリックする`,
@@ -251,7 +251,7 @@ function generateAchievements() {
     });
   });
 
-  [1, 10, 50].forEach((v) => {
+  [1, 10, 50, 100].forEach((v) => {
     list.push({
       id: `ach_golden_${v}`, name: `✨ ゴールデンビル${v}回ゲット`,
       desc: `ゴールデンビルを${v}回クリックする`,
@@ -259,28 +259,28 @@ function generateAchievements() {
     });
   });
 
-  [1, 10, 50, 100].forEach((v) => {
+  [1, 10, 50, 100, 500].forEach((v) => {
     list.push({
       id: `ach_petition_${v}`, name: `📢 町民の声に応えた${v}回`,
       desc: `陳情に${v}回応える`,
       check: (s) => (s.petitionsAnswered || 0) >= v
     });
   });
-  [1, 5, 20].forEach((v) => {
+  [1, 5, 20, 50].forEach((v) => {
     list.push({
       id: `ach_sickness_survived_${v}`, name: `😷 疫病を乗り越えた${v}回`,
       desc: `病気の流行を${v}回乗り越える`,
       check: (s) => (s.sicknessSurvived || 0) >= v
     });
   });
-  [1, 10, 30].forEach((v) => {
+  [1, 10, 30, 100].forEach((v) => {
     list.push({
       id: `ach_sickness_cured_${v}`, name: `💉 医療キャンペーン${v}回実施`,
       desc: `治療キャンペーンで疫病を${v}回早期収束させる`,
       check: (s) => (s.sicknessCured || 0) >= v
     });
   });
-  [1, 10, 50].forEach((v) => {
+  [1, 10, 50, 200].forEach((v) => {
     list.push({
       id: `ach_sickness_prevented_${v}`, name: `🏥 病気を未然に防いだ${v}回`,
       desc: `病院の力で疫病の流行を${v}回未然に防ぐ`,
@@ -288,14 +288,14 @@ function generateAchievements() {
     });
   });
 
-  [1, 10, 50].forEach((v) => {
+  [1, 10, 50, 100].forEach((v) => {
     list.push({
       id: `ach_daily_${v}`, name: `📅 デイリーミッション${v}回達成`,
       desc: `デイリーミッションを合計${v}回達成する`,
       check: (s) => (s.dailyMissionsClaimed || 0) >= v
     });
   });
-  [3, 7, 14, 30, 100].forEach((v) => {
+  [3, 7, 14, 30, 100, 365].forEach((v) => {
     list.push({
       id: `ach_streak_${v}`, name: `🔥 連続ログイン${v}日`,
       desc: `${v}日連続でログインする`,
@@ -306,6 +306,9 @@ function generateAchievements() {
     list.push({ id: 'ach_bgm_collector', name: '🎶 BGMコレクター', desc: '全てのBGMトラックを解放する', check: (s) => (s.bgmUnlocked || []).length >= BGM_TRACKS.length });
   }
   list.push({ id: 'ach_fame_shop_complete', name: '💎 名声の頂点', desc: '名声ショップの全アップグレードを取得する', check: (s) => (s.fameShopUpgrades || []).length >= FAME_SHOP.length });
+  BGM_TRACKS.filter((t) => t.price > 0).forEach((t) => {
+    list.push({ id: `ach_bgm_${t.id}`, name: `🎵 BGM『${t.name}』解放`, desc: `BGM『${t.name}』を購入して解放する`, check: (s) => (s.bgmUnlocked || []).includes(t.id) });
+  });
   list.push({ id: 'ach_rank_top', name: `👑 ${RANK_TIERS[RANK_TIERS.length - 1].title}に到達`, desc: `最高位の称号「${RANK_TIERS[RANK_TIERS.length - 1].title}」を獲得する`, check: (s) => rankIndexFor(s.lifetimeMoney) >= RANK_TIERS.length - 1 });
   list.push({ id: 'ach_season_cold', name: '🥶 冬の備え', desc: '冬の陳情で「暖房設備を導入する」を選ぶ', check: (s) => (s.seasonalComplaintsResolved || []).includes('cold') });
   list.push({ id: 'ach_season_heat', name: '🥵 夏の備え', desc: '夏の陳情で「冷房設備を導入する」を選ぶ', check: (s) => (s.seasonalComplaintsResolved || []).includes('heat') });
@@ -313,9 +316,74 @@ function generateAchievements() {
   list.push({ id: 'ach_happiness_100', name: '😊 幸福な町', desc: '幸福度100%以上を達成', check: (s) => s.happiness >= 100 });
   list.push({ id: 'ach_happiness_150', name: '😆 楽園都市', desc: '幸福度150%(上限)を達成', check: (s) => s.happiness >= 150 });
   list.push({ id: 'ach_all_buildings', name: '🏙️ フルコンプ都市', desc: '全ての施設を1つ以上所有する', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 1) });
-  list.push({ id: 'ach_playtime_1h', name: '⏱️ 滞在1時間', desc: '合計プレイ時間1時間を達成', check: (s) => s.playtime >= 3600 });
-  list.push({ id: 'ach_playtime_10h', name: '⏱️ 滞在10時間', desc: '合計プレイ時間10時間を達成', check: (s) => s.playtime >= 36000 });
+  list.push({ id: 'ach_balanced_10', name: '⚖️ バランス都市', desc: '全ての施設を10個以上ずつ所有する', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 10) });
+  list.push({ id: 'ach_balanced_50', name: '🌈 万能都市', desc: '全ての施設を50個以上ずつ所有する', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 50) });
+  [
+    [3600, '1h', '1時間'], [10800, '3h', '3時間'], [36000, '10h', '10時間'],
+    [86400, '24h', '24時間'], [360000, '100h', '100時間']
+  ].forEach(([sec, id, label]) => {
+    list.push({ id: `ach_playtime_${id}`, name: `⏱️ 滞在${label}`, desc: `合計プレイ時間${label}を達成`, check: (s) => s.playtime >= sec });
+  });
   list.push({ id: 'ach_ufo', name: '🛸 未確認飛行物体', desc: 'UFOをクリックする', check: (s) => s.ufoClicks >= 1 });
+  [10, 100].forEach((v) => {
+    list.push({ id: `ach_ufo_${v}`, name: `🛸 UFOハンター${v}回`, desc: `UFOを${v}回クリックする`, check: (s) => s.ufoClicks >= v });
+  });
+
+  // 施設の合計所有数(種類を問わず町全体の建物数)
+  [100, 500, 1000, 5000, 20000, 100000].forEach((v) => {
+    list.push({
+      id: `ach_total_buildings_${v}`, name: `🏘️ 町の施設数${formatNum(v)}突破`,
+      desc: `所有する施設の合計が${formatNum(v)}個に到達`,
+      check: (s) => Object.values(s.buildings || {}).reduce((a, b) => a + b, 0) >= v
+    });
+  });
+
+  // アップグレード購入数
+  const totalUpgrades = UPGRADES.length;
+  [5, 20, 50, totalUpgrades].forEach((v, i, arr) => {
+    // 重複除去(施設数が少ない環境でもtotalUpgradesが手前のマイルストーンと被らないように)
+    if (i > 0 && v <= arr[i - 1]) return;
+    const isAll = v === totalUpgrades;
+    list.push({
+      id: `ach_upgrades_${v}`, name: isAll ? '⚡ アップグレード完全制覇' : `⚡ アップグレード収集家 Lv.${i + 1}`,
+      desc: isAll ? `全${totalUpgrades}種のアップグレードを購入する` : `アップグレードを合計${v}個購入する`,
+      check: (s) => (s.upgrades || []).length >= v
+    });
+  });
+
+  // 陳情を突っぱねた回数(強気の町政)
+  [1, 10, 50, 200].forEach((v) => {
+    list.push({
+      id: `ach_petition_ignored_${v}`, name: `🙅 突っぱねる町政${v}回`,
+      desc: `陳情を${v}回突っぱねる`,
+      check: (s) => (s.petitionsIgnored || 0) >= v
+    });
+  });
+
+  // 都市合併で得た累計名声ポイント
+  [10, 50, 200, 1000, 5000, 20000].forEach((v) => {
+    list.push({
+      id: `ach_fame_${v}`, name: `🎖️ 名声ポイント${formatNum(v)}突破`,
+      desc: `都市合併で得た名声ポイントが累計${formatNum(v)}に到達`,
+      check: (s) => (s.famePoints || 0) >= v
+    });
+  });
+
+  // 手元資金(使わずに貯めた現在の所持金)
+  const cashMilestones = [
+    [100000, '節約家'], [10000000, '貯蓄家'], [1000000000, '大富豪の懐'],
+    [100000000000, '金庫番'], [10000000000000, '揺るぎない財力']
+  ];
+  cashMilestones.forEach(([v, name]) => {
+    list.push({
+      id: `ach_cash_${v}`, name: `💵 ${name}`,
+      desc: `所持金${formatNum(v)}円を貯める(使わずに保持)`,
+      check: (s) => s.money >= v
+    });
+  });
+
+  // 冬夏どちらの季節陳情にも対応した町
+  list.push({ id: 'ach_season_both', name: '🌦️ 全天候対応都市', desc: '冬と夏、両方の季節限定陳情に設備で対応する', check: (s) => (s.seasonalComplaintsResolved || []).includes('cold') && (s.seasonalComplaintsResolved || []).includes('heat') });
 
   return list;
 }
