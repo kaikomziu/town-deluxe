@@ -382,9 +382,15 @@ const Game = (() => {
   const MAX_LAYOUT_PER_BUILDING = 24;
   // 町役場(下部中央)の真下に建物が重なって掴めなくなるのを防ぐ「配置禁止ゾーン」
   const TOWN_HALL_ZONE = { xMin: 34, xMax: 66, yMin: 84 };
+  // #buildings-layerは.scene全体(空も含む)にかぶさっているため、
+  // yはこの範囲内に収めないと建物が空中に表示されてしまう。
+  // レイヤーのローカル座標(0-100%)のうち、地面(.ground、下46%)に
+  // 収まる範囲だけを許可する。
+  const GROUND_Y_MIN = 56;
+  const GROUND_Y_MAX = 96;
   function sanitizeLayoutPosition(x, y) {
     x = Math.min(97, Math.max(3, x));
-    y = Math.min(97, Math.max(3, y));
+    y = Math.min(GROUND_Y_MAX, Math.max(GROUND_Y_MIN, y));
     if (x >= TOWN_HALL_ZONE.xMin && x <= TOWN_HALL_ZONE.xMax && y >= TOWN_HALL_ZONE.yMin) {
       x = x < 50 ? TOWN_HALL_ZONE.xMin - 5 : TOWN_HALL_ZONE.xMax + 5;
       x = Math.min(97, Math.max(3, x));
@@ -400,7 +406,7 @@ const Game = (() => {
   // ドラッグ配置は廃止し、購入時にランダムな位置へ設置する(見た目のみ・経済効果なし)
   function defaultLayoutPosition() {
     const x = 4 + Math.random() * 92;
-    const y = 6 + Math.random() * 90;
+    const y = GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN);
     return sanitizeLayoutPosition(x, y);
   }
   function addLayoutEntries(buildingId, qty) {
