@@ -317,7 +317,7 @@ const UI = (() => {
       const card = document.createElement('div');
       card.className = 'card' + (affordable ? '' : ' disabled');
       const perEach = b.baseIncome * Game.buildingMultiplier(b.id) * Game.globalMultiplier();
-      const preventBadge = b.id === 'hospital' ? ` <span class="district-badge" title="病気イベントの発生自体を未然に防ぐ確率(病院が多いほど上昇、最大95%)">🛡️予防${Math.round(Game.sicknessPreventionChance() * 100)}%</span>` : '';
+      const preventBadge = (b.prevention && b.prevention.sickness) ? ` <span class="district-badge" title="病気イベントの発生自体を未然に防ぐ確率(医療系施設が多いほど上昇、最大95%)">🛡️予防${Math.round(Game.sicknessPreventionChance() * 100)}%</span>` : '';
       card.innerHTML = `
         <div class="card-icon">${b.emoji}</div>
         <div class="card-body">
@@ -773,7 +773,7 @@ const UI = (() => {
       if (!evt.cured) Effects.toast('😌 疫病の流行が収まった', '😌');
       updateTopbar();
     } else if (evt.type === 'sickness-prevented') {
-      Effects.toast('🏥 病院のおかげで疫病の流行を未然に防いだ!', '🏥');
+      Effects.toast('🏥 医療施設のおかげで疫病の流行を未然に防いだ!', '🏥');
     } else if (evt.type === 'bgm-changed') {
       const audio = $('bgm-audio');
       const wasPlaying = !audio.paused;

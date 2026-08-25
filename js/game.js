@@ -105,7 +105,7 @@ const Game = (() => {
       happiness += n * b.happiness;
     });
     if (Date.now() < state.sicknessUntil) {
-      const mitigation = buildingCount('hospital') * 1.5;
+      const mitigation = medicalPower() * 12.5;
       happiness -= Math.max(2, state.sicknessSeverity - mitigation);
     }
     state.population = pop;
@@ -339,30 +339,34 @@ const Game = (() => {
       scheduleSickness();
     }, delay);
   }
-  // 予防チェック: 病院が多いほど、そもそも流行が起きにくくなる(0円でも最大95%までしか防げない=稀に起きる)
-  function preventionChance(buildingId, ratePerBuilding, cap) {
-    return Math.min(cap, buildingCount(buildingId) * ratePerBuilding);
+  // 予防チェック: 医療系施設(病院・動物病院・保健所など)が多いほど、そもそも流行が起きにくくなる
+  // (0円でも最大95%までしか防げない=稀に起きる)。各施設の`prevention.sickness`が寄与率。
+  function medicalBuildings() {
+    return BUILDINGS.filter((b) => b.prevention && b.prevention.sickness);
+  }
+  function medicalPower() {
+    return medicalBuildings().reduce((sum, b) => sum + buildingCount(b.id) * b.prevention.sickness, 0);
   }
   function sicknessPreventionChance() {
-    return preventionChance('hospital', 0.12 * fameEffectMult('preventionMult'), 0.95);
+    return Math.min(0.95, medicalPower() * fameEffectMult('preventionMult'));
   }
   function attemptSickness() {
     if (Date.now() < state.sicknessUntil) return; // 既に流行中なら重複させない
-    const hospitals = buildingCount('hospital');
-    if (hospitals > 0 && Math.random() < sicknessPreventionChance()) {
+    const power = medicalPower();
+    if (power > 0 && Math.random() < sicknessPreventionChance()) {
       state.sicknessPrevented = (state.sicknessPrevented || 0) + 1;
-      emit('event', { type: 'sickness-prevented', hospitals });
+      emit('event', { type: 'sickness-prevented', hospitals: buildingCount('hospital') });
       return;
     }
     triggerSickness();
   }
   function triggerSickness() {
     if (Date.now() < state.sicknessUntil) return; // 既に流行中なら重複させない
-    const hospitals = buildingCount('hospital');
+    const power = medicalPower();
     const baseSeverity = 18 + Math.random() * 10;
-    const severity = Math.max(3, baseSeverity - hospitals * 1.5);
+    const severity = Math.max(3, baseSeverity - power * 12.5);
     const baseDuration = 50000 + Math.random() * 30000;
-    const duration = Math.max(15000, baseDuration - hospitals * 2500);
+    const duration = Math.max(15000, baseDuration - power * 20833.33);
     const info = SICKNESS_EVENTS[Math.floor(Math.random() * SICKNESS_EVENTS.length)];
     state.sicknessUntil = Date.now() + duration;
     state.sicknessSeverity = severity;
