@@ -10,6 +10,7 @@ const Game = (() => {
   let rainUntil = 0;
   let ufo = null;
   let petition = null; // { template, expiresAt }
+  let lastRankIndex = -1;
   let listeners = { tick: [], buy: [], achievement: [], prestige: [], event: [] };
 
   function on(evt, fn) { listeners[evt].push(fn); }
@@ -18,8 +19,11 @@ const Game = (() => {
   function init() {
     state = loadGame() || defaultState();
     Effects.setMuted(!!state.muted);
+    sanitizeLayout();
+    checkDailyReset();
+    lastRankIndex = rankIndexFor(state.lifetimeMoney); // 起動直後は称号アップ演出を出さない
     // UI.init()がイベント購読を終えてから発火させるため次のマイクロタスクへ遅延
-    setTimeout(handleOfflineEarnings, 0);
+    setTimeout(handleReturnFlow, 0);
     lastTick = Date.now();
     scheduleGolden();
     scheduleRain();
@@ -27,12 +31,12 @@ const Game = (() => {
     schedulePetition();
     scheduleSickness();
     setInterval(tick, 100);
-    setInterval(() => saveGame(state), 10000);
+    setInterval(() => { saveGame(state); emit('event', { type: 'autosave' }); }, 10000);
     window.addEventListener('beforeunload', () => saveGame(state));
     document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(state); });
   }
 
-  function handleOfflineEarnings() {
+  function computeOfflineEarnings() {
     const elapsedMs = Date.now() - (state.lastSave || Date.now());
     const elapsedSec = Math.min(elapsedMs / 1000, 8 * 3600); // 最大8時間分
     if (elapsedSec > 30) {
@@ -41,8 +45,18 @@ const Game = (() => {
       if (earned > 0) {
         state.money += earned;
         state.lifetimeMoney += earned;
-        emit('event', { type: 'offline', earned, seconds: elapsedSec });
+        return { earned, seconds: elapsedSec };
       }
+    }
+    return null;
+  }
+
+  // ログインボーナスとオフライン報酬をまとめて1つの通知にする(モーダルの重複表示を避ける)
+  function handleReturnFlow() {
+    const login = checkLoginStreak();
+    const offline = computeOfflineEarnings();
+    if (login || offline) {
+      emit('event', { type: 'welcome-back', login, offline });
     }
   }
 
@@ -54,7 +68,26 @@ const Game = (() => {
       const up = UPGRADES.find((u) => u.id === uid);
       if (up && up.effect.type === 'mult' && up.effect.buildingId === id) mult *= up.effect.value;
     });
-    return mult;
+    return mult * districtMultiplier(id);
+  }
+
+  // --- 地区ボーナス: 同じ施設を近くに固めて配置すると収入アップ ---
+  const DISTRICT_RADIUS = 16;
+  const DISTRICT_MAX_BONUS = 0.2; // 最大+20%
+  function districtMultiplier(id) {
+    const entries = (state.layout || []).filter((e) => e.type === id);
+    if (entries.length < 3) return 1;
+    let clustered = 0;
+    entries.forEach((e) => {
+      let neighbors = 0;
+      entries.forEach((o) => {
+        if (o === e) return;
+        const dx = o.x - e.x, dy = o.y - e.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= DISTRICT_RADIUS) neighbors++;
+      });
+      if (neighbors >= 2) clustered++;
+    });
+    return 1 + (clustered / entries.length) * DISTRICT_MAX_BONUS;
   }
 
   function clickMultiplier() {
@@ -104,10 +137,14 @@ const Game = (() => {
     const income = incomePerSec();
     state.money += income * delta;
     state.lifetimeMoney += income * delta;
+    addDailyProgress('moneyEarnedToday', income * delta);
     state.playtime += delta;
     checkGolden();
     checkPetitionExpire();
     checkSickness();
+    checkRank();
+    checkDailyReset();
+    checkDistrictFirstTime();
     checkAchievements();
     emit('tick', { income, delta });
   }
@@ -125,6 +162,7 @@ const Game = (() => {
     state.money -= cost;
     state.buildings[id] = count + actualQty;
     addLayoutEntries(id, actualQty);
+    addDailyProgress('buildingsBoughtToday', actualQty);
     recomputeStats();
     Effects.sound('buy');
     emit('buy', { id, qty: actualQty, cost });
@@ -141,6 +179,7 @@ const Game = (() => {
     if (!canAfford(up.cost)) { Effects.sound('error'); return false; }
     state.money -= up.cost;
     state.upgrades.push(id);
+    addDailyProgress('upgradesToday', 1);
     Effects.sound('buy');
     emit('buy', { id, upgrade: true });
     return true;
@@ -163,6 +202,8 @@ const Game = (() => {
     state.money += gain;
     state.lifetimeMoney += gain;
     state.totalClicks++;
+    addDailyProgress('clicksToday', 1);
+    addDailyProgress('moneyEarnedToday', gain);
     Effects.sound('click');
     return { gain, combo: comboCount, comboMult };
   }
@@ -193,6 +234,8 @@ const Game = (() => {
     const reward = income > 0 ? income * (20 + Math.random() * 20) : 100 + state.lifetimeMoney * 0.1;
     state.money += reward;
     state.lifetimeMoney += reward;
+    addDailyProgress('goldenToday', 1);
+    addDailyProgress('moneyEarnedToday', reward);
     Effects.sound('golden');
     emit('event', { type: 'golden-click', reward });
     return reward;
@@ -226,6 +269,7 @@ const Game = (() => {
     const reward = Math.max(500, state.lifetimeMoney * 0.02);
     state.money += reward;
     state.lifetimeMoney += reward;
+    addDailyProgress('moneyEarnedToday', reward);
     Effects.sound('golden');
     emit('event', { type: 'ufo-click', reward });
     return reward;
@@ -240,7 +284,11 @@ const Game = (() => {
     }, delay);
   }
   function spawnPetition() {
-    const template = COMPLAINTS[Math.floor(Math.random() * COMPLAINTS.length)];
+    const season = currentSeason();
+    // 通常の陳情プールに、今の季節に合う季節限定の陳情を1枠分だけ混ぜる
+    const seasonal = SEASONAL_COMPLAINTS.filter((c) => c.season === season);
+    const pool = COMPLAINTS.concat(seasonal);
+    const template = pool[Math.floor(Math.random() * pool.length)];
     petition = { template, expiresAt: Date.now() + 25000, createdAt: Date.now() };
     emit('event', { type: 'petition-spawn', petition });
   }
@@ -267,6 +315,10 @@ const Game = (() => {
       state.money -= cost;
       state.happinessBonus = Math.max(-100, Math.min(100, (state.happinessBonus || 0) + template.agreeHappiness));
       state.petitionsAnswered++;
+      addDailyProgress('petitionsToday', 1);
+      if (template.season && !state.seasonalComplaintsResolved.includes(template.id)) {
+        state.seasonalComplaintsResolved.push(template.id);
+      }
       result = { agree: true, cost, happiness: template.agreeHappiness, template };
     } else {
       state.happinessBonus = Math.max(-100, Math.min(100, (state.happinessBonus || 0) + template.ignoreHappiness));
@@ -331,15 +383,30 @@ const Game = (() => {
 
   // --- 街並みレイアウト(ドラッグ配置) ---
   const MAX_LAYOUT_PER_BUILDING = 24;
+  // 町役場(下部中央)の真下に建物が重なって掴めなくなるのを防ぐ「配置禁止ゾーン」
+  const TOWN_HALL_ZONE = { xMin: 34, xMax: 66, yMin: 84 };
+  function sanitizeLayoutPosition(x, y) {
+    x = Math.min(97, Math.max(3, x));
+    y = Math.min(97, Math.max(3, y));
+    if (x >= TOWN_HALL_ZONE.xMin && x <= TOWN_HALL_ZONE.xMax && y >= TOWN_HALL_ZONE.yMin) {
+      x = x < 50 ? TOWN_HALL_ZONE.xMin - 5 : TOWN_HALL_ZONE.xMax + 5;
+      x = Math.min(97, Math.max(3, x));
+    }
+    return { x, y };
+  }
+  function sanitizeLayout() {
+    (state.layout || []).forEach((e) => {
+      const fixed = sanitizeLayoutPosition(e.x, e.y);
+      e.x = fixed.x; e.y = fixed.y;
+    });
+  }
   function defaultLayoutPosition(index) {
     const cols = 14;
     const col = index % cols;
     const row = Math.floor(index / cols);
     let x = (col + 0.5) * (100 / cols) + (Math.random() - 0.5) * 3;
     let y = Math.max(8, 92 - row * 10) + (Math.random() - 0.5) * 3;
-    x = Math.min(97, Math.max(3, x));
-    y = Math.min(96, Math.max(6, y));
-    return { x, y };
+    return sanitizeLayoutPosition(x, y);
   }
   function addLayoutEntries(buildingId, qty) {
     const existing = state.layout.filter((e) => e.type === buildingId).length;
@@ -352,7 +419,104 @@ const Game = (() => {
   }
   function updateLayoutPosition(id, x, y) {
     const entry = state.layout.find((e) => e.id === id);
-    if (entry) { entry.x = x; entry.y = y; }
+    if (entry) {
+      const fixed = sanitizeLayoutPosition(x, y);
+      entry.x = fixed.x; entry.y = fixed.y;
+    }
+  }
+
+  // --- 市長ランク(称号) ---
+  function checkRank() {
+    const idx = rankIndexFor(state.lifetimeMoney);
+    if (idx > lastRankIndex) {
+      lastRankIndex = idx;
+      emit('event', { type: 'rank-up', rank: RANK_TIERS[idx] });
+    }
+  }
+
+  function checkDistrictFirstTime() {
+    if (state.districtBonusEverActive) return;
+    if (BUILDINGS.some((b) => districtMultiplier(b.id) > 1.001)) {
+      state.districtBonusEverActive = true;
+    }
+  }
+
+  // --- デイリーミッション ---
+  function todayStr() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function yesterdayStr() {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function pickDailyMissions() {
+    const pool = MISSION_POOL.slice();
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const income = incomePerSec();
+    return pool.slice(0, 3).map((m) => {
+      const target = m.dynamicTarget ? Math.max(500, Math.round(income * 150)) : m.target;
+      const reward = Math.max(m.tier === 2 ? 200 : 80, Math.round(income * (m.tier === 2 ? 60 : 25)));
+      return { id: m.id, metric: m.metric, target, reward, claimed: false, icon: m.icon, label: m.label(target) };
+    });
+  }
+  function checkDailyReset() {
+    const today = todayStr();
+    if (!state.daily || state.daily.date !== today) {
+      state.daily = {
+        date: today,
+        missions: pickDailyMissions(),
+        progress: { buildingsBoughtToday: 0, moneyEarnedToday: 0, clicksToday: 0, petitionsToday: 0, goldenToday: 0, upgradesToday: 0 }
+      };
+      emit('event', { type: 'daily-reset' });
+    }
+  }
+  function addDailyProgress(metric, amount) {
+    if (!state.daily || !state.daily.progress) return;
+    state.daily.progress[metric] = (state.daily.progress[metric] || 0) + amount;
+  }
+  function claimMission(id) {
+    const m = state.daily.missions.find((x) => x.id === id);
+    if (!m || m.claimed) return false;
+    const progress = state.daily.progress[m.metric] || 0;
+    if (progress < m.target) return false;
+    m.claimed = true;
+    state.money += m.reward;
+    state.lifetimeMoney += m.reward;
+    state.dailyMissionsClaimed = (state.dailyMissionsClaimed || 0) + 1;
+    Effects.sound('buy');
+    emit('event', { type: 'mission-claimed', mission: m });
+    return true;
+  }
+
+  // --- 連続ログイン報酬 ---
+  function checkLoginStreak() {
+    const today = todayStr();
+    if (state.lastLoginDate === today) return null;
+    let broken = false;
+    if (state.lastLoginDate === '') {
+      state.loginStreak = 1;
+    } else if (state.lastLoginDate === yesterdayStr()) {
+      state.loginStreak = (state.loginStreak || 0) + 1;
+    } else {
+      state.loginStreak = 1;
+      broken = true;
+    }
+    state.lastLoginDate = today;
+    const reward = Math.max(100, Math.round(incomePerSec() * 30)) * Math.min(state.loginStreak, 7);
+    state.money += reward;
+    state.lifetimeMoney += reward;
+    return { streak: state.loginStreak, reward, broken };
+  }
+
+  // --- 住民の表示切り替え(演出負荷が気になる場合オフに) ---
+  function togglePedestrians() {
+    state.showPedestrians = !state.showPedestrians;
+    return state.showPedestrians;
   }
 
   // --- 実績 ---
@@ -420,7 +584,10 @@ const Game = (() => {
     isRaining: () => Date.now() < rainUntil,
     getPetition: () => petition, resolvePetition, petitionCost,
     isSick: () => Date.now() < state.sicknessUntil, cureSickness, sicknessCureCost,
-    getLayout: () => state.layout, updateLayoutPosition,
+    getLayout: () => state.layout, updateLayoutPosition, sanitizeLayoutPosition, districtMultiplier,
+    getRank: () => RANK_TIERS[rankIndexFor(state.lifetimeMoney)],
+    getDaily: () => state.daily, claimMission,
+    getShowPedestrians: () => state.showPedestrians, togglePedestrians,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
     toggleMute, toggleBgmMute, setBgmVolume, doReset, saveNow: () => saveGame(state)
   };

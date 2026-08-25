@@ -50,6 +50,17 @@ function defaultState() {
     muted: false,
     bgmMuted: false,
     bgmVolume: 0.35,
+    showPedestrians: true,
+    districtBonusEverActive: false,
+    seasonalComplaintsResolved: [],
+    dailyMissionsClaimed: 0,
+    loginStreak: 0,
+    lastLoginDate: '',
+    daily: {
+      date: '',
+      missions: [],
+      progress: { buildingsBoughtToday: 0, moneyEarnedToday: 0, clicksToday: 0, petitionsToday: 0, goldenToday: 0, upgradesToday: 0 }
+    },
     lastSave: Date.now(),
     firstPlay: Date.now()
   };

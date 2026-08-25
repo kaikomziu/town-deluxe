@@ -17,8 +17,11 @@ const UI = (() => {
     bindSickness();
     bindFooter();
     bindBgm();
+    bindPedestrianToggle();
     renderSky();
     renderClouds();
+    renderSeason();
+    setupPedestrians();
     Game.on('tick', onTick);
     Game.on('buy', onBuy);
     Game.on('achievement', onAchievement);
@@ -30,6 +33,7 @@ const UI = (() => {
       showSicknessBanner({ icon: s.sicknessIcon, name: s.sicknessName });
     }
     setInterval(renderSky, 5000);
+    setInterval(renderSeason, 60000);
     setInterval(updatePetitionTimer, 200);
   }
 
@@ -70,11 +74,14 @@ const UI = (() => {
   let comboHideTimer = null;
   function bindTownHall() {
     const hall = $('town-hall');
+    const icon = $('town-hall-icon');
     hall.addEventListener('click', (e) => {
       const result = Game.manualClick();
-      hall.classList.remove('bump');
-      void hall.offsetWidth;
-      hall.classList.add('bump');
+      // ホバー拡大(外側の.town-hall)とアイドル/バンプの揺れ(内側のアイコン)を別要素に分けているため、
+      // ここでアニメを再生させても外側のホバーtransformとは絶対にケンカしない
+      icon.classList.remove('bump');
+      void icon.offsetWidth;
+      icon.classList.add('bump');
       const rect = hall.getBoundingClientRect();
       Effects.floatText(rect.left + rect.width / 2 + (Math.random() * 30 - 15), rect.top, `+${formatNum(result.gain)}`, '#ffd93d', 20 + Math.min(10, result.combo / 5));
       Effects.confetti(rect.left + rect.width / 2, rect.top + rect.height / 2, 6);
@@ -239,6 +246,7 @@ const UI = (() => {
     renderStats();
     renderPrestige();
     renderBuildingsLayer();
+    renderDaily();
   }
 
   function updateTopbar() {
@@ -249,6 +257,8 @@ const UI = (() => {
     $('stat-happiness').textContent = Math.round(s.happiness) + '%';
     $('stat-fame').textContent = s.famePoints;
     $('stat-fame-wrap').classList.toggle('hidden', s.famePoints === 0 && Game.potentialFame() === 0);
+    const rank = Game.getRank();
+    $('stat-rank-value').textContent = `${rank.emoji} ${rank.title}`;
   }
 
   function renderBuild() {
@@ -262,12 +272,14 @@ const UI = (() => {
       const card = document.createElement('div');
       card.className = 'card' + (affordable ? '' : ' disabled');
       const perEach = b.baseIncome * Game.buildingMultiplier(b.id) * Game.globalMultiplier();
+      const districtMult = Game.districtMultiplier(b.id);
+      const districtBadge = districtMult > 1.001 ? ` <span class="district-badge" title="近くにまとめて配置すると発生する地区ボーナス">🏘️+${Math.round((districtMult - 1) * 100)}%</span>` : '';
       card.innerHTML = `
         <div class="card-icon">${b.emoji}</div>
         <div class="card-body">
           <div class="card-title">${b.name} <span class="card-count">×${count}</span></div>
           <div class="card-desc">${b.desc}</div>
-          <div class="card-sub">${formatNum(perEach)}円/秒・個</div>
+          <div class="card-sub">${formatNum(perEach)}円/秒・個${districtBadge}</div>
         </div>
         <button class="buy-btn" ${affordable ? '' : 'disabled'}>${formatNum(cost)}円</button>
       `;
@@ -386,6 +398,39 @@ const UI = (() => {
     }
   }
 
+  function renderDaily() {
+    const el = $('tab-daily');
+    if (!el) return;
+    const s = Game.getState();
+    const daily = Game.getDaily();
+    const streakHtml = `
+      <div class="streak-box">
+        <div class="streak-num">🔥 連続ログイン ${s.loginStreak || 0}日目</div>
+        <div class="card-desc">毎日プレイすると資金ボーナス(最大7日分まで倍率アップ)</div>
+      </div>`;
+    const missionsHtml = (daily.missions || []).map((m) => {
+      const progress = daily.progress[m.metric] || 0;
+      const pct = Math.min(100, Math.round((progress / m.target) * 100));
+      const done = progress >= m.target;
+      return `
+        <div class="card mission-card${done ? (m.claimed ? ' claimed' : ' ready') : ''}">
+          <div class="card-icon">${m.icon}</div>
+          <div class="card-body">
+            <div class="card-title">${m.label}</div>
+            <div class="mission-bar"><div class="mission-bar-fill" style="width:${pct}%"></div></div>
+            <div class="card-sub">${formatNum(Math.min(progress, m.target))} / ${formatNum(m.target)} ・ 報酬 ${formatNum(m.reward)}円</div>
+          </div>
+          <button class="buy-btn mission-claim-btn" data-id="${m.id}" ${done && !m.claimed ? '' : 'disabled'}>${m.claimed ? '達成済み' : '受け取る'}</button>
+        </div>`;
+    }).join('');
+    el.innerHTML = `${streakHtml}<div class="daily-heading">📅 今日のミッション</div>${missionsHtml}`;
+    el.querySelectorAll('.mission-claim-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (Game.claimMission(btn.dataset.id)) renderDaily();
+      });
+    });
+  }
+
   // --- 街並みシーン(ドラッグ配置対応) ---
   let renderedLayoutIds = new Set();
   function renderBuildingsLayer() {
@@ -414,9 +459,9 @@ const UI = (() => {
       const b = BUILDINGS.find((x) => x.id === entry.type);
       if (!b) return;
       const span = document.createElement('span');
-      span.className = 'building-icon';
+      span.className = 'building-icon constructing';
       span.dataset.id = entry.id;
-      span.textContent = b.emoji;
+      span.textContent = '🏗️';
       span.title = b.name;
       span.style.left = `${entry.x}%`;
       span.style.top = `${entry.y}%`;
@@ -425,6 +470,13 @@ const UI = (() => {
       makeDraggable(span, entry);
       layer.appendChild(span);
       renderedLayoutIds.add(entry.id);
+      // 建設中演出: クレーンアイコンで少し揺れた後、実際の建物にすり替わる
+      setTimeout(() => {
+        span.textContent = b.emoji;
+        span.classList.remove('constructing');
+        span.classList.add('construction-complete');
+        setTimeout(() => span.classList.remove('construction-complete'), 500);
+      }, 700 + Math.random() * 300);
     });
 
     renderOverflowBadge();
@@ -466,11 +518,10 @@ const UI = (() => {
       const dxPct = ((e.clientX - startX) / layerRect.width) * 100;
       const dyPct = ((e.clientY - startY) / layerRect.height) * 100;
       if (Math.abs(dxPct) > 0.5 || Math.abs(dyPct) > 0.5) moved = true;
-      const nx = Math.min(97, Math.max(3, origX + dxPct));
-      const ny = Math.min(97, Math.max(3, origY + dyPct));
-      el.style.left = `${nx}%`;
-      el.style.top = `${ny}%`;
-      entry.x = nx; entry.y = ny;
+      const fixed = Game.sanitizeLayoutPosition(origX + dxPct, origY + dyPct);
+      el.style.left = `${fixed.x}%`;
+      el.style.top = `${fixed.y}%`;
+      entry.x = fixed.x; entry.y = fixed.y;
     });
     const finishDrag = (e) => {
       if (!dragging) return;
@@ -506,6 +557,81 @@ const UI = (() => {
     }
   }
 
+  // --- 季節演出 ---
+  let lastSeason = null;
+  const SEASON_PARTICLE_CONFIG = {
+    spring: { emoji: '🌸', count: 10, dir: 'fall' },
+    summer: { emoji: '✨', count: 6, dir: 'rise' },
+    autumn: { emoji: '🍁', count: 10, dir: 'fall' },
+    winter: { emoji: '❄️', count: 14, dir: 'fall' }
+  };
+  function renderSeason() {
+    const season = currentSeason();
+    const scene = $('scene');
+    scene.classList.remove('season-spring', 'season-summer', 'season-autumn', 'season-winter');
+    scene.classList.add(`season-${season}`);
+    if (season === lastSeason) return;
+    lastSeason = season;
+    const container = $('season-particles');
+    container.innerHTML = '';
+    const conf = SEASON_PARTICLE_CONFIG[season];
+    if (!conf) return;
+    for (let i = 0; i < conf.count; i++) {
+      const p = document.createElement('span');
+      p.className = `season-particle ${conf.dir}`;
+      p.textContent = conf.emoji;
+      p.style.left = `${Math.random() * 100}%`;
+      p.style.fontSize = `${12 + Math.random() * 10}px`;
+      p.style.animationDuration = `${6 + Math.random() * 8}s`;
+      p.style.animationDelay = `-${Math.random() * 10}s`;
+      container.appendChild(p);
+    }
+  }
+
+  // --- 住民が街を歩き回る演出(重ければ設定でオフ) ---
+  let pedestrianTimer = null;
+  function setupPedestrians() {
+    renderPedestrianVisibility();
+    if (pedestrianTimer) clearInterval(pedestrianTimer);
+    const container = $('pedestrian-layer');
+    container.innerHTML = '';
+    const count = 6;
+    const emojis = ['🚶', '🚶‍♀️', '🐕'];
+    for (let i = 0; i < count; i++) {
+      const p = document.createElement('span');
+      p.className = 'pedestrian';
+      p.textContent = emojis[i % emojis.length];
+      p.style.left = `${10 + Math.random() * 80}%`;
+      p.style.top = `${20 + Math.random() * 70}%`;
+      container.appendChild(p);
+    }
+    retargetPedestrians();
+    pedestrianTimer = setInterval(retargetPedestrians, 4500);
+  }
+  function retargetPedestrians() {
+    if (!Game.getShowPedestrians()) return;
+    document.querySelectorAll('.pedestrian').forEach((p) => {
+      const oldX = parseFloat(p.style.left || '50');
+      const nx = 6 + Math.random() * 88;
+      const ny = 15 + Math.random() * 78;
+      p.style.transitionDuration = `${3 + Math.random() * 2}s`;
+      p.style.transform = nx < oldX ? 'scaleX(-1)' : 'scaleX(1)';
+      p.style.left = `${nx}%`;
+      p.style.top = `${ny}%`;
+    });
+  }
+  function renderPedestrianVisibility() {
+    const on = Game.getShowPedestrians();
+    $('pedestrian-layer').classList.toggle('hidden', !on);
+    $('pedestrian-toggle').checked = on;
+  }
+  function bindPedestrianToggle() {
+    $('pedestrian-toggle').addEventListener('change', () => {
+      Game.togglePedestrians();
+      renderPedestrianVisibility();
+    });
+  }
+
   // --- ゲームイベント反応 ---
   function onTick() {
     updateTopbar();
@@ -533,8 +659,22 @@ const UI = (() => {
   }
 
   function onEvent(evt) {
-    if (evt.type === 'offline' && evt.earned > 1) {
-      showOfflineModal(evt.earned, evt.seconds);
+    if (evt.type === 'welcome-back') {
+      showWelcomeBackModal(evt.login, evt.offline);
+    } else if (evt.type === 'rank-up') {
+      Effects.fireworksShow(3);
+      Effects.toast(`${evt.rank.emoji} 称号「${evt.rank.title}」に昇進しました!`, evt.rank.emoji);
+      updateTopbar();
+    } else if (evt.type === 'mission-claimed') {
+      Effects.toast(`${evt.mission.icon} デイリーミッション達成!+${formatNum(evt.mission.reward)}円`, '📅');
+      updateTopbar();
+    } else if (evt.type === 'daily-reset') {
+      if (activeTab === 'daily') renderDaily();
+    } else if (evt.type === 'autosave') {
+      const btn = $('save-btn');
+      btn.classList.remove('save-flash');
+      void btn.offsetWidth;
+      btn.classList.add('save-flash');
     } else if (evt.type === 'golden-spawn') {
       positionGolden();
       $('golden-building').classList.remove('hidden');
@@ -597,15 +737,23 @@ const UI = (() => {
     el.style.top = `${h * 0.3 + Math.random() * (h * 0.4)}px`;
   }
 
-  function showOfflineModal(earned, seconds) {
+  function showWelcomeBackModal(login, offline) {
     const modal = $('changelog-modal');
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
+    let body = '';
+    if (login) {
+      body += `<p>${login.broken ? '連続ログインが途切れましたが、また1日目からスタート!' : `🔥 連続ログイン <b>${login.streak}日目</b>!`}</p>`;
+      body += `<p class="offline-earned">+${formatNum(login.reward)}円</p>`;
+    }
+    if (offline) {
+      const hrs = Math.floor(offline.seconds / 3600);
+      const mins = Math.floor((offline.seconds % 3600) / 60);
+      body += `<p>${hrs > 0 ? hrs + '時間' : ''}${mins}分の間に、町が資金を稼いでくれました。</p>`;
+      body += `<p class="offline-earned">+${formatNum(offline.earned)}円</p>`;
+    }
     modal.innerHTML = `
       <div class="modal-box">
         <h2>🏙️ おかえりなさい!</h2>
-        <p>${hrs > 0 ? hrs + '時間' : ''}${mins}分の間に、町が資金を稼いでくれました。</p>
-        <p class="offline-earned">+${formatNum(earned)}円</p>
+        ${body}
         <div class="modal-actions"><button id="offline-close">受け取る</button></div>
       </div>`;
     modal.classList.remove('hidden');
@@ -620,6 +768,7 @@ const UI = (() => {
     if (activeTab === 'build') renderBuild();
     if (activeTab === 'stats') renderStats();
     if (activeTab === 'prestige') renderPrestige();
+    if (activeTab === 'daily') renderDaily();
     if (Game.isSick() && !$('sickness-banner').classList.contains('hidden')) {
       $('sickness-cure-btn').textContent = `💉 医療キャンペーン (${formatNum(Game.sicknessCureCost())}円)`;
     }

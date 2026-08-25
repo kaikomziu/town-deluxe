@@ -35,6 +35,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 .stat-label { font-size: 10px; opacity: .65; }
 .stat span:last-child { font-weight: 700; font-size: 14px; }
+.rank-stat { background: linear-gradient(135deg, rgba(255,217,61,.18), rgba(255,159,67,.12)); }
+#stat-rank-value { color: #ffd93d; }
 
 /* ---------- Layout ---------- */
 .layout { display: flex; flex: 1; gap: 14px; padding: 14px; }
@@ -67,6 +69,33 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 }
 @keyframes drift { from { left: -10%; } to { left: 110%; } }
 
+/* 季節演出: skyにフィルターをかけつつ、舞う粒子(花びら/落ち葉/雪/きらめき)を重ねる */
+.scene.season-spring .sky { filter: saturate(1.1) hue-rotate(-6deg); }
+.scene.season-autumn .sky { filter: sepia(.18) saturate(1.35) hue-rotate(-8deg); }
+.scene.season-winter .sky { filter: saturate(.75) brightness(1.05); }
+.scene.season-winter .ground { filter: brightness(1.12) saturate(.65); }
+.season-particles { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 4; }
+.season-particle { position: absolute; top: -8%; }
+.season-particle.fall { animation-name: season-fall; animation-timing-function: linear; animation-iteration-count: infinite; }
+.season-particle.rise { top: auto; bottom: -8%; animation-name: season-rise; animation-timing-function: ease-in-out; animation-iteration-count: infinite; }
+@keyframes season-fall {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: .9; }
+  50% { transform: translate(14px, 55vh) rotate(180deg); }
+  100% { transform: translate(-14px, 112vh) rotate(360deg); opacity: .6; }
+}
+@keyframes season-rise {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-80vh); opacity: 0; }
+}
+
+.pedestrian-layer { position: absolute; left: 0; right: 0; top: 10%; bottom: 4%; overflow: hidden; z-index: 2; }
+.pedestrian {
+  position: absolute; font-size: 18px; transform: translate(-50%, -50%);
+  transition-property: left, top; transition-timing-function: ease-in-out;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.3));
+}
+
 .rain-overlay {
   position: absolute; inset: 0; pointer-events: none;
   background-image: repeating-linear-gradient(115deg, rgba(180,210,255,.35) 0 2px, transparent 2px 22px);
@@ -97,20 +126,28 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   filter: drop-shadow(0 6px 10px rgba(0,0,0,.5));
 }
 @keyframes bob { 0%, 100% { transform: translate(-50%, -50%) translateY(0); } 50% { transform: translate(-50%, -50%) translateY(-4px); } }
+.building-icon.constructing { animation: construct-shake .3s ease-in-out infinite; opacity: .9; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)) grayscale(.2); }
+.building-icon.construction-complete { animation: construct-pop .5s ease; }
+@keyframes construct-shake { 0%, 100% { transform: translate(-50%, -50%) rotate(-4deg); } 50% { transform: translate(-50%, -50%) rotate(4deg); } }
+@keyframes construct-pop { 0% { transform: translate(-50%, -50%) scale(0.3); } 60% { transform: translate(-50%, -50%) scale(1.3); } 100% { transform: translate(-50%, -50%) scale(1); } }
 .building-more, #layout-overflow {
   position: absolute; top: 6px; right: 10px; font-size: 11px;
   background: rgba(0,0,0,.4); border-radius: 8px; padding: 3px 8px; color: #fff; z-index: 6;
 }
 
+/* 町役場: 外側(.town-hall)はホバー拡大専用、内側(.town-hall-icon)はidle-bob/bumpアニメ専用に分離。
+   同じtransformプロパティを取り合わないので、クリック後もホバー演出が壊れない。 */
 .town-hall {
-  position: absolute; left: 50%; bottom: 6%; transform: translateX(-50%);
-  font-size: 64px; background: none; padding: 0; filter: drop-shadow(0 6px 10px rgba(0,0,0,.4));
-  animation: idle-bob 3s ease-in-out infinite;
+  position: absolute; left: 50%; bottom: 6%; z-index: 8;
+  transform: translateX(-50%); transition: transform .15s ease;
+  font-size: 64px; line-height: 1; background: none; padding: 0; border: 0;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.4));
 }
-.town-hall:hover { animation-play-state: paused; transform: translateX(-50%) scale(1.12); }
-.town-hall.bump { animation: bump-anim .25s ease; }
-@keyframes idle-bob { 0%, 100% { transform: translateX(-50%) translateY(0); } 50% { transform: translateX(-50%) translateY(-6px); } }
-@keyframes bump-anim { 0% { transform: translateX(-50%) scale(1); } 40% { transform: translateX(-50%) scale(1.25); } 100% { transform: translateX(-50%) scale(1); } }
+.town-hall:hover { transform: translateX(-50%) scale(1.12); }
+.town-hall-icon { display: inline-block; animation: idle-bob 3s ease-in-out infinite; }
+.town-hall-icon.bump { animation: bump-anim .25s ease; }
+@keyframes idle-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes bump-anim { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
 
 .golden-building {
   position: absolute; font-size: 40px; background: none; padding: 0;
@@ -172,7 +209,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   max-height: 82vh;
 }
 .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
-.tab-btn { flex: 1; background: #232a45; font-size: 13px; padding: 8px 6px; border-radius: 10px; }
+.tab-btn { flex: 1 1 30%; min-width: 88px; background: #232a45; font-size: 13px; padding: 8px 6px; border-radius: 10px; }
 .tab-btn.active { background: linear-gradient(135deg, #5b6ef5, #7b5bf5); box-shadow: 0 0 10px rgba(123,91,245,.5); }
 
 .buy-qty { display: flex; gap: 6px; margin-bottom: 8px; }
@@ -198,10 +235,20 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .card-count { color: #8fd3ff; font-weight: 600; }
 .card-desc { font-size: 11px; opacity: .7; margin-top: 2px; }
 .card-sub { font-size: 11px; color: #9fe8b0; margin-top: 2px; }
+.district-badge { color: #ffb46b; font-weight: 700; }
 .buy-btn { white-space: nowrap; background: #3a54c9; font-weight: 700; }
 .buy-btn:hover:not(:disabled) { background: #4a66e6; }
 
 .upgrade-card .card-title { color: #ffd93d; }
+
+.streak-box { background: linear-gradient(135deg, #3a2a1f, #1f2740); border-radius: 12px; padding: 12px; }
+.streak-num { font-weight: 800; font-size: 15px; color: #ff9f43; }
+.daily-heading { font-size: 13px; opacity: .8; margin: 4px 0 2px; font-weight: 700; }
+.mission-bar { height: 6px; background: rgba(255,255,255,.1); border-radius: 4px; margin-top: 4px; overflow: hidden; }
+.mission-bar-fill { height: 100%; background: linear-gradient(90deg, #4caf6b, #7ed957); }
+.mission-card.ready .mission-claim-btn { background: linear-gradient(135deg, #4caf6b, #7ed957); color: #0c1b0f; }
+.mission-card.ready { box-shadow: 0 0 12px rgba(123,220,120,.3); }
+.mission-card.claimed { opacity: .55; }
 
 .empty { text-align: center; opacity: .6; padding: 30px 10px; }
 
@@ -234,6 +281,10 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .footer .credit { opacity: .55; font-size: 11px; }
 .footer .credit a { color: #8fb8ff; text-decoration: none; }
 .footer .credit a:hover { text-decoration: underline; }
+.pedestrian-toggle { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; opacity: .85; }
+.pedestrian-toggle input { accent-color: #7b5bf5; }
+#save-btn.save-flash { animation: save-flash-anim .8s ease; }
+@keyframes save-flash-anim { 0% { box-shadow: 0 0 0 rgba(123,220,120,0); } 30% { box-shadow: 0 0 14px rgba(123,220,120,.8); background: #2e6b45; } 100% { box-shadow: 0 0 0 rgba(123,220,120,0); } }
 
 /* ---------- Toast ---------- */
 #toast-container { position: fixed; top: 18px; right: 18px; z-index: 800; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }

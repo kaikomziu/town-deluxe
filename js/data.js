@@ -45,6 +45,12 @@ const COMPLAINTS = [
   { id: 'streetlight',   icon: '💡', text: '夜道が暗くて危ない…',                       agreeLabel: '街灯を増やす',   ignoreLabel: '放っておく',   agreeHappiness: 6, ignoreHappiness: -5 }
 ];
 
+// 季節限定の陳情(agree=設備を導入する / ignore=我慢してもらう)。通常の陳情プールに合流する
+const SEASONAL_COMPLAINTS = [
+  { id: 'cold', season: 'winter', icon: '🥶', text: '寒すぎて凍えそう…暖房が欲しい…', agreeLabel: '暖房設備を導入する', ignoreLabel: '厚着で我慢してもらう', agreeHappiness: 10, ignoreHappiness: -8 },
+  { id: 'heat', season: 'summer', icon: '🥵', text: '暑すぎて倒れそう…冷房が欲しい…', agreeLabel: '冷房設備を導入する', ignoreLabel: '我慢してもらう',       agreeHappiness: 10, ignoreHappiness: -8 }
+];
+
 // 病気イベントのバリエーション(フレーバー用)
 const SICKNESS_EVENTS = [
   { name: '風邪',           icon: '🤧' },
@@ -52,6 +58,42 @@ const SICKNESS_EVENTS = [
   { name: '食あたり',       icon: '🤢' },
   { name: '流行り病',       icon: '😷' },
   { name: '花粉症',         icon: '🌼' }
+];
+
+// 現在の季節(実時間の月から判定)。UIの演出と陳情の抽選の両方で共用する
+function currentSeason() {
+  const m = new Date().getMonth() + 1; // 1-12
+  if (m >= 3 && m <= 5) return 'spring';
+  if (m >= 6 && m <= 8) return 'summer';
+  if (m >= 9 && m <= 11) return 'autumn';
+  return 'winter';
+}
+
+// 市長ランク(称号)。累計資金のしきい値で昇進
+const RANK_TIERS = [
+  { min: 0,               title: '村長',         emoji: '🌾' },
+  { min: 50000,           title: '町長',         emoji: '🏘️' },
+  { min: 5000000,         title: '市長',         emoji: '🏙️' },
+  { min: 500000000,       title: '県知事',       emoji: '🏯' },
+  { min: 50000000000,     title: '総理大臣',     emoji: '🎩' },
+  { min: 5000000000000,   title: '伝説の指導者', emoji: '👑' }
+];
+function rankIndexFor(lifetimeMoney) {
+  let idx = 0;
+  RANK_TIERS.forEach((r, i) => { if (lifetimeMoney >= r.min) idx = i; });
+  return idx;
+}
+
+// デイリーミッションの候補プール。tierで報酬倍率が変わる
+const MISSION_POOL = [
+  { id: 'buy_small',   metric: 'buildingsBoughtToday', target: 5,    icon: '🏗️', tier: 1, label: (t) => `施設を${t}個購入する` },
+  { id: 'buy_big',     metric: 'buildingsBoughtToday', target: 20,   icon: '🏗️', tier: 2, label: (t) => `施設を${t}個購入する` },
+  { id: 'click_small', metric: 'clicksToday',          target: 50,   icon: '👆', tier: 1, label: (t) => `町役場を${t}回クリックする` },
+  { id: 'click_big',   metric: 'clicksToday',          target: 200,  icon: '👆', tier: 2, label: (t) => `町役場を${t}回クリックする` },
+  { id: 'earn',        metric: 'moneyEarnedToday',     target: null, icon: '💰', tier: 2, dynamicTarget: true, label: (t) => `${formatNum(t)}円稼ぐ` },
+  { id: 'petition',    metric: 'petitionsToday',       target: 2,    icon: '📢', tier: 1, label: (t) => `陳情に${t}回応える` },
+  { id: 'golden',      metric: 'goldenToday',          target: 1,    icon: '✨', tier: 2, label: (t) => `ゴールデンビルを${t}回クリックする` },
+  { id: 'upgrade',     metric: 'upgradesToday',        target: 1,    icon: '⚡', tier: 1, label: (t) => `アップグレードを${t}個購入する` }
 ];
 
 function maxAffordable(building, currentCount, money) {
@@ -187,6 +229,25 @@ function generateAchievements() {
       check: (s) => (s.sicknessCured || 0) >= v
     });
   });
+
+  [1, 10, 50].forEach((v) => {
+    list.push({
+      id: `ach_daily_${v}`, name: `📅 デイリーミッション${v}回達成`,
+      desc: `デイリーミッションを合計${v}回達成する`,
+      check: (s) => (s.dailyMissionsClaimed || 0) >= v
+    });
+  });
+  [3, 7, 14, 30, 100].forEach((v) => {
+    list.push({
+      id: `ach_streak_${v}`, name: `🔥 連続ログイン${v}日`,
+      desc: `${v}日連続でログインする`,
+      check: (s) => (s.loginStreak || 0) >= v
+    });
+  });
+  list.push({ id: 'ach_district_first', name: '🏘️ 地区効果発生', desc: '同じ施設をまとめて配置し、地区ボーナスを発生させる', check: (s) => s.districtBonusEverActive === true });
+  list.push({ id: 'ach_rank_top', name: `👑 ${RANK_TIERS[RANK_TIERS.length - 1].title}に到達`, desc: `最高位の称号「${RANK_TIERS[RANK_TIERS.length - 1].title}」を獲得する`, check: (s) => rankIndexFor(s.lifetimeMoney) >= RANK_TIERS.length - 1 });
+  list.push({ id: 'ach_season_cold', name: '🥶 冬の備え', desc: '冬の陳情で「暖房設備を導入する」を選ぶ', check: (s) => (s.seasonalComplaintsResolved || []).includes('cold') });
+  list.push({ id: 'ach_season_heat', name: '🥵 夏の備え', desc: '夏の陳情で「冷房設備を導入する」を選ぶ', check: (s) => (s.seasonalComplaintsResolved || []).includes('heat') });
 
   list.push({ id: 'ach_happiness_100', name: '😊 幸福な町', desc: '幸福度100%以上を達成', check: (s) => s.happiness >= 100 });
   list.push({ id: 'ach_happiness_150', name: '😆 楽園都市', desc: '幸福度150%(上限)を達成', check: (s) => s.happiness >= 150 });
