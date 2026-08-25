@@ -30,6 +30,8 @@ function defaultState() {
     upgrades: [],
     achievements: [],
     famePoints: 0,
+    fameSpent: 0,
+    fameShopUpgrades: [],
     prestigeCount: 0,
     totalClicks: 0,
     goldenClicks: 0,
@@ -72,18 +74,18 @@ function defaultState() {
 function saveGame(state) {
   state.lastSave = Date.now();
   // 本体(資金・施設数など、サイズが増えないフィールド)はCookieへ
-  const { achievements, upgrades, layout, ...core } = state;
+  const { achievements, upgrades, layout, fameShopUpgrades, ...core } = state;
   try {
     const json = JSON.stringify(core);
     setCookie(SAVE_KEY, btoa(encodeURIComponent(json)), SAVE_DAYS);
   } catch (e) {
     console.warn('セーブに失敗しました', e);
   }
-  // 増え続けるリスト類はlocalStorageへ(容量が大きく上限を気にしなくてよい)
+  // 増え続けるリスト類(と、都市合併でも失われない名声ショップの購入済みリスト)はlocalStorageへ
   try {
-    localStorage.setItem(LISTS_KEY, JSON.stringify({ achievements, upgrades, layout }));
+    localStorage.setItem(LISTS_KEY, JSON.stringify({ achievements, upgrades, layout, fameShopUpgrades }));
   } catch (e) {
-    console.warn('実績/アップグレード/街並み配置の保存に失敗しました', e);
+    console.warn('実績/アップグレード/街並み配置/名声ショップの保存に失敗しました', e);
   }
 }
 
@@ -103,9 +105,10 @@ function loadGame() {
         merged.achievements = lists.achievements || [];
         merged.upgrades = lists.upgrades || [];
         merged.layout = lists.layout || [];
+        merged.fameShopUpgrades = lists.fameShopUpgrades || [];
       }
     } catch (e) {
-      console.warn('実績/アップグレード/街並み配置の読み込みに失敗しました', e);
+      console.warn('実績/アップグレード/街並み配置/名声ショップの読み込みに失敗しました', e);
     }
     return merged;
   } catch (e) {

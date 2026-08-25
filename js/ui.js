@@ -300,6 +300,7 @@ const UI = (() => {
     $('stat-pop').textContent = formatNum(s.population) + '人';
     $('stat-happiness').textContent = Math.round(s.happiness) + '%';
     $('stat-fame').textContent = s.famePoints;
+    $('stat-fame-wrap').title = `名声ショップで利用可能: ${Game.fameAvailable()}pt`;
     $('stat-fame-wrap').classList.toggle('hidden', s.famePoints === 0 && Game.potentialFame() === 0);
     const rank = Game.getRank();
     $('stat-rank-value').textContent = `${rank.emoji} ${rank.title}`;
@@ -431,7 +432,13 @@ const UI = (() => {
         <p>🌟 都市合併</p>
         <p class="card-desc">町をリセットして、名声ポイントを <b>+${gain}</b> 獲得します。(合計 ${potential}pt → 収入 ${(potential * 2)}% アップ)</p>
         <button id="prestige-btn" class="danger-btn" ${gain > 0 ? '' : 'disabled'}>${gain > 0 ? '都市合併を実行する' : 'まだ増えていません'}</button>
-      </div>`;
+      </div>
+      <div class="prestige-box">
+        <p>💎 名声ショップ</p>
+        <p class="card-desc">名声ポイントを消費して恒久アップグレードを購入できます(都市合併しても失われません)。都市合併の回数を重ねるほど新しいティアが解放されます。</p>
+        <p class="card-desc">利用可能: <b>${Game.fameAvailable()}pt</b></p>
+      </div>
+      <div id="fame-shop-list" class="fame-shop-list"></div>`;
     const btn = $('prestige-btn');
     if (btn) {
       btn.addEventListener('click', () => {
@@ -440,6 +447,49 @@ const UI = (() => {
         });
       });
     }
+    renderFameShop();
+  }
+
+  function renderFameShop() {
+    const listEl = $('fame-shop-list');
+    if (!listEl) return;
+    const s = Game.getState();
+    listEl.innerHTML = '';
+    FAME_SHOP_TIER_REQUIREMENT.forEach((req, tier) => {
+      const items = FAME_SHOP.filter((f) => f.tier === tier);
+      if (items.length === 0) return;
+      const unlocked = Game.isFameShopTierUnlocked(tier);
+      const header = document.createElement('div');
+      header.className = 'fame-tier-header';
+      header.textContent = unlocked ? `Tier ${tier + 1}` : `🔒 都市合併${req}回で解放(現在${s.prestigeCount}回)`;
+      listEl.appendChild(header);
+      items.forEach((item) => listEl.appendChild(fameCard(item, unlocked)));
+    });
+  }
+
+  function fameCard(item, tierUnlocked) {
+    const owned = Game.isFameUpgradeOwned(item.id);
+    const available = Game.fameAvailable();
+    const affordable = tierUnlocked && !owned && available >= item.cost;
+    const card = document.createElement('div');
+    card.className = 'card upgrade-card' + (owned ? ' owned' : (!tierUnlocked ? ' locked' : (affordable ? '' : ' disabled')));
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="card-title">${tierUnlocked ? item.name : '🔒 ？？？'}</div>
+        <div class="card-desc">${tierUnlocked ? item.desc : 'まだ解放されていません'}</div>
+      </div>
+      ${owned ? '<span class="owned-badge">✅取得済み</span>' : (tierUnlocked ? `<button class="buy-btn" ${affordable ? '' : 'disabled'}>${item.cost}pt</button>` : '')}
+    `;
+    if (tierUnlocked && !owned) {
+      card.querySelector('.buy-btn').addEventListener('click', () => {
+        if (Game.buyFameUpgrade(item.id)) {
+          Effects.toast(`${item.name} を取得!`, '💎');
+          renderFameShop();
+          updateTopbar();
+        }
+      });
+    }
+    return card;
   }
 
   function renderDaily() {

@@ -271,6 +271,11 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .danger-btn { background: linear-gradient(135deg, #f5525b, #f59f52); font-weight: 800; }
 .danger-btn:hover:not(:disabled) { background: linear-gradient(135deg, #ff6b73, #ffb46b); }
 
+.fame-shop-list { display: flex; flex-direction: column; gap: 8px; }
+.fame-tier-header { font-size: 12px; font-weight: 700; opacity: .75; margin: 6px 2px 0; }
+.card.owned { opacity: .7; }
+.owned-badge { white-space: nowrap; font-size: 12px; font-weight: 700; color: #7ed957; }
+
 /* ---------- Footer ---------- */
 .footer {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
