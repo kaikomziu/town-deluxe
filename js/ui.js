@@ -13,7 +13,10 @@ const UI = (() => {
     bindTownHall();
     bindGolden();
     bindUfo();
+    bindPetition();
+    bindSickness();
     bindFooter();
+    bindBgm();
     renderSky();
     renderClouds();
     Game.on('tick', onTick);
@@ -22,7 +25,21 @@ const UI = (() => {
     Game.on('prestige', onPrestige);
     Game.on('event', onEvent);
     renderAll();
+    if (Game.isSick()) {
+      const s = Game.getState();
+      showSicknessBanner({ icon: s.sicknessIcon, name: s.sicknessName });
+    }
     setInterval(renderSky, 5000);
+    setInterval(updatePetitionTimer, 200);
+  }
+
+  function updatePetitionTimer() {
+    const petition = Game.getPetition();
+    const bar = $('petition-timer-bar');
+    if (!petition) { bar.style.width = '0%'; return; }
+    const total = petition.expiresAt - petition.createdAt;
+    const remain = Math.max(0, petition.expiresAt - Date.now());
+    bar.style.width = `${(remain / total) * 100}%`;
   }
 
   function bindTabs() {
@@ -102,6 +119,69 @@ const UI = (() => {
         Effects.toast(`UFOが資金を落としていった! +${formatNum(reward)}円`, '🛸');
         el.classList.add('hidden');
       }
+    });
+  }
+
+  function bindPetition() {
+    $('petition-agree').addEventListener('click', () => {
+      const result = Game.resolvePetition(true);
+      if (result) handlePetitionResult(result);
+    });
+    $('petition-ignore').addEventListener('click', () => {
+      const result = Game.resolvePetition(false);
+      if (result) handlePetitionResult(result);
+    });
+  }
+
+  function handlePetitionResult(result) {
+    $('petition-panel').classList.add('hidden');
+    const t = result.template;
+    if (result.agree) {
+      Effects.toast(`${t.icon} 「${t.agreeLabel}」を実行!幸福度 +${result.happiness}`, t.icon);
+    } else {
+      Effects.toast(`${t.icon} 声を無視した…幸福度 ${result.happiness}`, t.icon);
+    }
+    updateTopbar();
+  }
+
+  function bindSickness() {
+    $('sickness-cure-btn').addEventListener('click', () => {
+      if (Game.cureSickness()) {
+        $('sickness-banner').classList.add('hidden');
+        Effects.toast('医療キャンペーンで疫病を収束させた!', '💉');
+        Effects.confetti(window.innerWidth / 2, 60, 30);
+        updateTopbar();
+      }
+    });
+  }
+
+  function bindBgm() {
+    const audio = $('bgm-audio');
+    const s = Game.getState();
+    audio.volume = s.bgmVolume;
+    $('bgm-volume').value = s.bgmVolume;
+    $('bgm-btn').textContent = s.bgmMuted ? '🔇' : '🎵';
+    let unlocked = false;
+    const tryPlay = () => {
+      if (unlocked || s.bgmMuted) return;
+      unlocked = true;
+      audio.play().catch(() => { unlocked = false; });
+    };
+    document.addEventListener('pointerdown', tryPlay, { once: true });
+    $('bgm-btn').addEventListener('click', () => {
+      const muted = Game.toggleBgmMute();
+      $('bgm-btn').textContent = muted ? '🔇' : '🎵';
+      if (muted) {
+        audio.pause();
+      } else {
+        unlocked = true;
+        audio.play().catch(() => {});
+      }
+    });
+    $('bgm-volume').addEventListener('input', (e) => {
+      const v = parseFloat(e.target.value);
+      Game.setBgmVolume(v);
+      audio.volume = v;
     });
   }
 
@@ -306,33 +386,100 @@ const UI = (() => {
     }
   }
 
-  // --- 街並みシーン ---
+  // --- 街並みシーン(ドラッグ配置対応) ---
+  let renderedLayoutIds = new Set();
   function renderBuildingsLayer() {
-    const s = Game.getState();
     const layer = $('buildings-layer');
-    layer.innerHTML = '';
-    BUILDINGS.forEach((b, idx) => {
-      const count = Game.buildingCount(b.id);
-      if (count === 0) return;
-      const shown = Math.min(count, 24);
-      const row = document.createElement('div');
-      row.className = 'building-row';
-      row.style.setProperty('--row', idx);
-      for (let i = 0; i < shown; i++) {
-        const span = document.createElement('span');
-        span.className = 'building-icon';
-        span.style.animationDelay = `${(i * 173) % 2000}ms`;
-        span.textContent = b.emoji;
-        row.appendChild(span);
+    const layout = Game.getLayout();
+    const currentIds = new Set(layout.map((e) => e.id));
+
+    // 経済上のカウントが0(合併リセット後など)になったらレイアウトも全消去
+    if (layout.length === 0) {
+      layer.innerHTML = '';
+      renderedLayoutIds = new Set();
+    }
+
+    // 既存DOMのうち、もう存在しないものを除去(通常は増える一方だが念のため)
+    renderedLayoutIds.forEach((id) => {
+      if (!currentIds.has(id)) {
+        const el = layer.querySelector(`[data-id="${id}"]`);
+        if (el) el.remove();
+        renderedLayoutIds.delete(id);
       }
-      if (count > shown) {
-        const more = document.createElement('span');
-        more.className = 'building-more';
-        more.textContent = `+${count - shown}`;
-        row.appendChild(more);
-      }
-      layer.appendChild(row);
     });
+
+    // 新規追加分だけDOMを足す(既存の位置はドラッグ結果を保つため触らない)
+    layout.forEach((entry) => {
+      if (renderedLayoutIds.has(entry.id)) return;
+      const b = BUILDINGS.find((x) => x.id === entry.type);
+      if (!b) return;
+      const span = document.createElement('span');
+      span.className = 'building-icon';
+      span.dataset.id = entry.id;
+      span.textContent = b.emoji;
+      span.title = b.name;
+      span.style.left = `${entry.x}%`;
+      span.style.top = `${entry.y}%`;
+      span.style.animationDelay = `${Math.random() * 2000}ms`;
+      span.style.touchAction = 'none';
+      makeDraggable(span, entry);
+      layer.appendChild(span);
+      renderedLayoutIds.add(entry.id);
+    });
+
+    renderOverflowBadge();
+  }
+
+  function renderOverflowBadge() {
+    let totalHidden = 0;
+    BUILDINGS.forEach((b) => {
+      const count = Game.buildingCount(b.id);
+      const shown = Game.getLayout().filter((e) => e.type === b.id).length;
+      totalHidden += Math.max(0, count - shown);
+    });
+    let badge = document.getElementById('layout-overflow');
+    if (totalHidden <= 0) {
+      if (badge) badge.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.id = 'layout-overflow';
+      badge.className = 'building-more';
+      $('scene').appendChild(badge);
+    }
+    badge.textContent = `+${formatNum(totalHidden)}軒`;
+  }
+
+  function makeDraggable(el, entry) {
+    let dragging = false, moved = false, startX = 0, startY = 0, origX = entry.x, origY = entry.y;
+    el.addEventListener('pointerdown', (e) => {
+      dragging = true; moved = false;
+      origX = entry.x; origY = entry.y;
+      startX = e.clientX; startY = e.clientY;
+      el.setPointerCapture(e.pointerId);
+      el.classList.add('dragging');
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const layerRect = $('buildings-layer').getBoundingClientRect();
+      const dxPct = ((e.clientX - startX) / layerRect.width) * 100;
+      const dyPct = ((e.clientY - startY) / layerRect.height) * 100;
+      if (Math.abs(dxPct) > 0.5 || Math.abs(dyPct) > 0.5) moved = true;
+      const nx = Math.min(97, Math.max(3, origX + dxPct));
+      const ny = Math.min(97, Math.max(3, origY + dyPct));
+      el.style.left = `${nx}%`;
+      el.style.top = `${ny}%`;
+      entry.x = nx; entry.y = ny;
+    });
+    const finishDrag = (e) => {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove('dragging');
+      if (moved) Game.updateLayoutPosition(entry.id, entry.x, entry.y);
+    };
+    el.addEventListener('pointerup', finishDrag);
+    el.addEventListener('pointercancel', finishDrag);
   }
 
   function renderSky() {
@@ -367,6 +514,7 @@ const UI = (() => {
   function onBuy() {
     renderBuild();
     renderUpgrades();
+    renderBuildingsLayer();
     updateTopbar();
   }
 
@@ -407,8 +555,38 @@ const UI = (() => {
       const rect = $('town-hall').getBoundingClientRect();
       Effects.confetti(rect.left + rect.width / 2, rect.top, 25);
       Effects.toast(`${evt.building.emoji} ${evt.building.name} が ${evt.count}個に!`, evt.building.emoji);
-      renderBuildingsLayer();
+    } else if (evt.type === 'petition-spawn') {
+      renderPetition(evt.petition);
+    } else if (evt.type === 'petition-expire') {
+      $('petition-panel').classList.add('hidden');
+      Effects.toast(`${evt.template.icon} 声を聞き逃してしまった…幸福度 ${evt.template.ignoreHappiness}`, evt.template.icon);
+      updateTopbar();
+    } else if (evt.type === 'sickness-start') {
+      showSicknessBanner(evt);
+      Effects.toast(`${evt.icon} ${evt.name}が流行り始めた…`, evt.icon);
+      Effects.sound('error');
+    } else if (evt.type === 'sickness-end') {
+      $('sickness-banner').classList.add('hidden');
+      if (!evt.cured) Effects.toast('😌 疫病の流行が収まった', '😌');
+      updateTopbar();
     }
+  }
+
+  function renderPetition(petition) {
+    const t = petition.template;
+    $('petition-icon').textContent = t.icon;
+    $('petition-text').textContent = t.text;
+    const cost = Game.petitionCost();
+    $('petition-agree').textContent = `${t.agreeLabel} (${formatNum(cost)}円)`;
+    $('petition-ignore').textContent = t.ignoreLabel;
+    $('petition-panel').classList.remove('hidden');
+  }
+
+  function showSicknessBanner(evt) {
+    $('sickness-icon').textContent = evt.icon;
+    $('sickness-text').textContent = `${evt.name}が流行中!幸福度が低下しています(病院で軽減)`;
+    $('sickness-cure-btn').textContent = `💉 医療キャンペーン (${formatNum(Game.sicknessCureCost())}円)`;
+    $('sickness-banner').classList.remove('hidden');
   }
 
   function positionGolden() {
@@ -442,6 +620,9 @@ const UI = (() => {
     if (activeTab === 'build') renderBuild();
     if (activeTab === 'stats') renderStats();
     if (activeTab === 'prestige') renderPrestige();
+    if (Game.isSick() && !$('sickness-banner').classList.contains('hidden')) {
+      $('sickness-cure-btn').textContent = `💉 医療キャンペーン (${formatNum(Game.sicknessCureCost())}円)`;
+    }
   }, 1000);
 
   return { init };

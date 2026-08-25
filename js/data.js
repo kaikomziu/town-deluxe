@@ -27,6 +27,33 @@ function buildingCost(building, currentCount, qty) {
   return b * Math.pow(r, currentCount) * (Math.pow(r, qty) - 1) / (r - 1);
 }
 
+// 町民の声(陳情)定義: agree=応える(有償・幸福度up) / ignore=突っぱねる(無償・幸福度down)
+const COMPLAINTS = [
+  { id: 'tax',           icon: '💰', text: '税金が高すぎる…もう少し安くしてほしい',       agreeLabel: '減税する',       ignoreLabel: '突っぱねる',   agreeHappiness: 8, ignoreHappiness: -6 },
+  { id: 'garbage',       icon: '🗑️', text: 'ゴミの回収が追いついていない…',             agreeLabel: '清掃を強化する', ignoreLabel: '放置する',     agreeHappiness: 6, ignoreHappiness: -7 },
+  { id: 'noise',         icon: '🔊', text: '工場の騒音がうるさくて眠れない…',           agreeLabel: '防音対策をする', ignoreLabel: '我慢してもらう', agreeHappiness: 7, ignoreHappiness: -5 },
+  { id: 'traffic',       icon: '🚦', text: '渋滞がひどくて通勤が大変…',                 agreeLabel: '道路を整備する', ignoreLabel: '放っておく',   agreeHappiness: 6, ignoreHappiness: -5 },
+  { id: 'park',          icon: '🌳', text: 'もっと公園を増やしてほしい…',               agreeLabel: '増設を約束する', ignoreLabel: '我慢してもらう', agreeHappiness: 5, ignoreHappiness: -4 },
+  { id: 'safety',        icon: '🚨', text: '最近物騒で治安が心配…',                     agreeLabel: '警備を強化する', ignoreLabel: '放置する',     agreeHappiness: 7, ignoreHappiness: -6 },
+  { id: 'school',        icon: '📚', text: '学校が足りなくて子供の教育が心配…',         agreeLabel: '増設を検討する', ignoreLabel: '我慢してもらう', agreeHappiness: 6, ignoreHappiness: -5 },
+  { id: 'entertainment', icon: '🎪', text: '町に娯楽が少なくてつまらない…',             agreeLabel: 'イベントを開催', ignoreLabel: '我慢してもらう', agreeHappiness: 8, ignoreHappiness: -6 },
+  { id: 'rent',          icon: '🏠', text: '家賃が高くて生活が苦しい…',                 agreeLabel: '補助金を出す',   ignoreLabel: '放置する',     agreeHappiness: 7, ignoreHappiness: -6 },
+  { id: 'water',         icon: '🚰', text: '水道の水圧が弱くて困っている…',             agreeLabel: '設備を整備する', ignoreLabel: '我慢してもらう', agreeHappiness: 6, ignoreHappiness: -5 },
+  { id: 'animal',        icon: '🦝', text: '野生動物が畑を荒らしている…',               agreeLabel: '対策をする',     ignoreLabel: '放っておく',   agreeHappiness: 5, ignoreHappiness: -4 },
+  { id: 'graffiti',      icon: '🎨', text: '落書きが増えて景観が悪い…',                 agreeLabel: '美化活動をする', ignoreLabel: '放置する',     agreeHappiness: 5, ignoreHappiness: -4 },
+  { id: 'wifi',          icon: '📶', text: '町のネット回線が遅すぎる…',                 agreeLabel: '回線を増強する', ignoreLabel: '我慢してもらう', agreeHappiness: 6, ignoreHappiness: -5 },
+  { id: 'streetlight',   icon: '💡', text: '夜道が暗くて危ない…',                       agreeLabel: '街灯を増やす',   ignoreLabel: '放っておく',   agreeHappiness: 6, ignoreHappiness: -5 }
+];
+
+// 病気イベントのバリエーション(フレーバー用)
+const SICKNESS_EVENTS = [
+  { name: '風邪',           icon: '🤧' },
+  { name: 'インフルエンザ', icon: '🤒' },
+  { name: '食あたり',       icon: '🤢' },
+  { name: '流行り病',       icon: '😷' },
+  { name: '花粉症',         icon: '🌼' }
+];
+
 function maxAffordable(building, currentCount, money) {
   // find max n such that buildingCost(building,currentCount,n) <= money
   let lo = 0, hi = 1;
@@ -136,6 +163,28 @@ function generateAchievements() {
       id: `ach_golden_${v}`, name: `✨ ゴールデンビル${v}回ゲット`,
       desc: `ゴールデンビルを${v}回クリックする`,
       check: (s) => s.goldenClicks >= v
+    });
+  });
+
+  [1, 10, 50, 100].forEach((v) => {
+    list.push({
+      id: `ach_petition_${v}`, name: `📢 町民の声に応えた${v}回`,
+      desc: `陳情に${v}回応える`,
+      check: (s) => (s.petitionsAnswered || 0) >= v
+    });
+  });
+  [1, 5, 20].forEach((v) => {
+    list.push({
+      id: `ach_sickness_survived_${v}`, name: `😷 疫病を乗り越えた${v}回`,
+      desc: `病気の流行を${v}回乗り越える`,
+      check: (s) => (s.sicknessSurvived || 0) >= v
+    });
+  });
+  [1, 10, 30].forEach((v) => {
+    list.push({
+      id: `ach_sickness_cured_${v}`, name: `💉 医療キャンペーン${v}回実施`,
+      desc: `治療キャンペーンで疫病を${v}回早期収束させる`,
+      check: (s) => (s.sicknessCured || 0) >= v
     });
   });
 

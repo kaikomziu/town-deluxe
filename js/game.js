@@ -9,6 +9,7 @@ const Game = (() => {
   let goldenBuilding = null; // { x, y, expiresAt }
   let rainUntil = 0;
   let ufo = null;
+  let petition = null; // { template, expiresAt }
   let listeners = { tick: [], buy: [], achievement: [], prestige: [], event: [] };
 
   function on(evt, fn) { listeners[evt].push(fn); }
@@ -23,6 +24,8 @@ const Game = (() => {
     scheduleGolden();
     scheduleRain();
     scheduleUfo();
+    schedulePetition();
+    scheduleSickness();
     setInterval(tick, 100);
     setInterval(() => saveGame(state), 10000);
     window.addEventListener('beforeunload', () => saveGame(state));
@@ -79,12 +82,16 @@ const Game = (() => {
   }
 
   function recomputeStats() {
-    let pop = 0, happiness = 50;
+    let pop = 0, happiness = 50 + (state.happinessBonus || 0);
     BUILDINGS.forEach((b) => {
       const n = buildingCount(b.id);
       pop += n * b.pop;
       happiness += n * b.happiness;
     });
+    if (Date.now() < state.sicknessUntil) {
+      const mitigation = buildingCount('hospital') * 1.5;
+      happiness -= Math.max(2, state.sicknessSeverity - mitigation);
+    }
     state.population = pop;
     state.happiness = Math.max(0, Math.min(150, happiness));
   }
@@ -99,6 +106,8 @@ const Game = (() => {
     state.lifetimeMoney += income * delta;
     state.playtime += delta;
     checkGolden();
+    checkPetitionExpire();
+    checkSickness();
     checkAchievements();
     emit('tick', { income, delta });
   }
@@ -115,6 +124,7 @@ const Game = (() => {
     if (!canAfford(cost)) { Effects.sound('error'); return false; }
     state.money -= cost;
     state.buildings[id] = count + actualQty;
+    addLayoutEntries(id, actualQty);
     recomputeStats();
     Effects.sound('buy');
     emit('buy', { id, qty: actualQty, cost });
@@ -221,6 +231,130 @@ const Game = (() => {
     return reward;
   }
 
+  // --- 町民の声(陳情) ---
+  function schedulePetition() {
+    const delay = 70000 + Math.random() * 90000; // 70~160秒
+    setTimeout(() => {
+      if (!petition) spawnPetition();
+      schedulePetition();
+    }, delay);
+  }
+  function spawnPetition() {
+    const template = COMPLAINTS[Math.floor(Math.random() * COMPLAINTS.length)];
+    petition = { template, expiresAt: Date.now() + 25000, createdAt: Date.now() };
+    emit('event', { type: 'petition-spawn', petition });
+  }
+  function petitionCost() {
+    return Math.max(20, Math.round(incomePerSec() * 25));
+  }
+  function checkPetitionExpire() {
+    if (petition && Date.now() > petition.expiresAt) {
+      const template = petition.template;
+      state.happinessBonus = Math.max(-100, Math.min(100, (state.happinessBonus || 0) + template.ignoreHappiness));
+      state.petitionsIgnored++;
+      petition = null;
+      recomputeStats();
+      emit('event', { type: 'petition-expire', template });
+    }
+  }
+  function resolvePetition(agree) {
+    if (!petition) return null;
+    const template = petition.template;
+    let result;
+    if (agree) {
+      const cost = petitionCost();
+      if (!canAfford(cost)) { Effects.sound('error'); return null; }
+      state.money -= cost;
+      state.happinessBonus = Math.max(-100, Math.min(100, (state.happinessBonus || 0) + template.agreeHappiness));
+      state.petitionsAnswered++;
+      result = { agree: true, cost, happiness: template.agreeHappiness, template };
+    } else {
+      state.happinessBonus = Math.max(-100, Math.min(100, (state.happinessBonus || 0) + template.ignoreHappiness));
+      state.petitionsIgnored++;
+      result = { agree: false, happiness: template.ignoreHappiness, template };
+    }
+    petition = null;
+    recomputeStats();
+    Effects.sound(agree ? 'buy' : 'error');
+    emit('event', { type: 'petition-resolved', result });
+    return result;
+  }
+
+  // --- 病気イベント ---
+  function scheduleSickness() {
+    const delay = 180000 + Math.random() * 180000; // 3~6分
+    setTimeout(() => {
+      triggerSickness();
+      scheduleSickness();
+    }, delay);
+  }
+  function triggerSickness() {
+    if (Date.now() < state.sicknessUntil) return; // 既に流行中なら重複させない
+    const hospitals = buildingCount('hospital');
+    const baseSeverity = 18 + Math.random() * 10;
+    const severity = Math.max(3, baseSeverity - hospitals * 1.5);
+    const baseDuration = 50000 + Math.random() * 30000;
+    const duration = Math.max(15000, baseDuration - hospitals * 2500);
+    const info = SICKNESS_EVENTS[Math.floor(Math.random() * SICKNESS_EVENTS.length)];
+    state.sicknessUntil = Date.now() + duration;
+    state.sicknessSeverity = severity;
+    state.sicknessName = info.name;
+    state.sicknessIcon = info.icon;
+    recomputeStats();
+    emit('event', { type: 'sickness-start', name: info.name, icon: info.icon, severity, duration });
+  }
+  function checkSickness() {
+    if (state.sicknessUntil > 0 && Date.now() > state.sicknessUntil) {
+      state.sicknessSurvived++;
+      state.sicknessUntil = 0;
+      state.sicknessSeverity = 0;
+      recomputeStats();
+      emit('event', { type: 'sickness-end', cured: false });
+    }
+  }
+  function sicknessCureCost() {
+    return Math.max(150, Math.round(incomePerSec() * 45));
+  }
+  function cureSickness() {
+    if (state.sicknessUntil <= Date.now()) return false;
+    const cost = sicknessCureCost();
+    if (!canAfford(cost)) { Effects.sound('error'); return false; }
+    state.money -= cost;
+    state.sicknessUntil = 0;
+    state.sicknessSeverity = 0;
+    state.sicknessCured++;
+    recomputeStats();
+    Effects.sound('prestige');
+    emit('event', { type: 'sickness-end', cured: true });
+    return true;
+  }
+
+  // --- 街並みレイアウト(ドラッグ配置) ---
+  const MAX_LAYOUT_PER_BUILDING = 24;
+  function defaultLayoutPosition(index) {
+    const cols = 14;
+    const col = index % cols;
+    const row = Math.floor(index / cols);
+    let x = (col + 0.5) * (100 / cols) + (Math.random() - 0.5) * 3;
+    let y = Math.max(8, 92 - row * 10) + (Math.random() - 0.5) * 3;
+    x = Math.min(97, Math.max(3, x));
+    y = Math.min(96, Math.max(6, y));
+    return { x, y };
+  }
+  function addLayoutEntries(buildingId, qty) {
+    const existing = state.layout.filter((e) => e.type === buildingId).length;
+    const toAdd = Math.max(0, Math.min(qty, MAX_LAYOUT_PER_BUILDING - existing));
+    for (let i = 0; i < toAdd; i++) {
+      const idx = state.layout.length;
+      const pos = defaultLayoutPosition(idx);
+      state.layout.push({ id: `b${idx}_${buildingId}_${Date.now().toString(36)}${i}`, type: buildingId, x: pos.x, y: pos.y });
+    }
+  }
+  function updateLayoutPosition(id, x, y) {
+    const entry = state.layout.find((e) => e.id === id);
+    if (entry) { entry.x = x; entry.y = y; }
+  }
+
   // --- 実績 ---
   function checkAchievements() {
     ACHIEVEMENTS.forEach((a) => {
@@ -247,6 +381,7 @@ const Game = (() => {
     state.money = 0;
     BUILDINGS.forEach((b) => (state.buildings[b.id] = 0));
     state.upgrades = [];
+    state.layout = [];
     recomputeStats();
     Effects.sound('prestige');
     emit('prestige', { gained });
@@ -257,6 +392,16 @@ const Game = (() => {
     state.muted = !state.muted;
     Effects.setMuted(state.muted);
     return state.muted;
+  }
+
+  function toggleBgmMute() {
+    state.bgmMuted = !state.bgmMuted;
+    return state.bgmMuted;
+  }
+
+  function setBgmVolume(v) {
+    state.bgmVolume = Math.max(0, Math.min(1, v));
+    return state.bgmVolume;
   }
 
   function doReset() {
@@ -273,7 +418,10 @@ const Game = (() => {
     getGolden: () => goldenBuilding, clickGolden,
     getUfo: () => ufo, clickUfo,
     isRaining: () => Date.now() < rainUntil,
+    getPetition: () => petition, resolvePetition, petitionCost,
+    isSick: () => Date.now() < state.sicknessUntil, cureSickness, sicknessCureCost,
+    getLayout: () => state.layout, updateLayoutPosition,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
-    toggleMute, doReset, saveNow: () => saveGame(state)
+    toggleMute, toggleBgmMute, setBgmVolume, doReset, saveNow: () => saveGame(state)
   };
 })();
