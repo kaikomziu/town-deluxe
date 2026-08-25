@@ -162,9 +162,15 @@ const UI = (() => {
     });
   }
 
+  function currentTrack() {
+    const s = Game.getState();
+    return BGM_TRACKS.find((t) => t.id === s.currentBgm) || BGM_TRACKS[0];
+  }
+
   function bindBgm() {
     const audio = $('bgm-audio');
     const s = Game.getState();
+    audio.src = currentTrack().file;
     audio.volume = s.bgmVolume;
     $('bgm-volume').value = s.bgmVolume;
     $('bgm-btn').textContent = s.bgmMuted ? '🔇' : '🎵';
@@ -190,6 +196,44 @@ const UI = (() => {
       Game.setBgmVolume(v);
       audio.volume = v;
     });
+    $('bgm-select-btn').addEventListener('click', showBgmModal);
+  }
+
+  function showBgmModal() {
+    const s = Game.getState();
+    const modal = $('changelog-modal');
+    const rows = BGM_TRACKS.map((t) => {
+      const owned = s.bgmUnlocked.includes(t.id);
+      const isCurrent = s.currentBgm === t.id;
+      let action;
+      if (isCurrent) action = `<button disabled>再生中</button>`;
+      else if (owned) action = `<button class="bgm-select" data-id="${t.id}">選択</button>`;
+      else action = `<button class="bgm-buy" data-id="${t.id}" ${s.money >= t.price ? '' : 'disabled'}>${formatNum(t.price)}円で購入</button>`;
+      return `
+        <div class="card bgm-row${isCurrent ? ' ready' : ''}">
+          <div class="card-body">
+            <div class="card-title">${t.name}${isCurrent ? ' 🎧' : ''}</div>
+            <div class="card-desc">BGM: 「${t.name}」 by ${t.credit}</div>
+          </div>
+          ${action}
+        </div>`;
+    }).join('');
+    modal.innerHTML = `<div class="modal-box"><h2>🎼 BGM選択</h2><div class="bgm-list">${rows}</div><div class="modal-actions"><button id="bgm-modal-close">閉じる</button></div></div>`;
+    modal.classList.remove('hidden');
+    modal.querySelectorAll('.bgm-select').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (Game.selectBgm(btn.dataset.id)) showBgmModal();
+      });
+    });
+    modal.querySelectorAll('.bgm-buy').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (Game.buyBgmTrack(btn.dataset.id)) {
+          Effects.toast('🎼 新しいBGMを解放しました!', '🎼');
+          showBgmModal();
+        }
+      });
+    });
+    $('bgm-modal-close').addEventListener('click', () => modal.classList.add('hidden'));
   }
 
   function bindFooter() {
@@ -274,12 +318,13 @@ const UI = (() => {
       const perEach = b.baseIncome * Game.buildingMultiplier(b.id) * Game.globalMultiplier();
       const districtMult = Game.districtMultiplier(b.id);
       const districtBadge = districtMult > 1.001 ? ` <span class="district-badge" title="近くにまとめて配置すると発生する地区ボーナス">🏘️+${Math.round((districtMult - 1) * 100)}%</span>` : '';
+      const preventBadge = b.id === 'hospital' ? ` <span class="district-badge" title="病気イベントの発生自体を未然に防ぐ確率(病院が多いほど上昇、最大95%)">🛡️予防${Math.round(Game.sicknessPreventionChance() * 100)}%</span>` : '';
       card.innerHTML = `
         <div class="card-icon">${b.emoji}</div>
         <div class="card-body">
           <div class="card-title">${b.name} <span class="card-count">×${count}</span></div>
           <div class="card-desc">${b.desc}</div>
-          <div class="card-sub">${formatNum(perEach)}円/秒・個${districtBadge}</div>
+          <div class="card-sub">${formatNum(perEach)}円/秒・個${districtBadge}${preventBadge}</div>
         </div>
         <button class="buy-btn" ${affordable ? '' : 'disabled'}>${formatNum(cost)}円</button>
       `;
@@ -359,6 +404,7 @@ const UI = (() => {
         <div class="stats-item"><span>クリック回数</span><b>${s.totalClicks.toLocaleString()}回</b></div>
         <div class="stats-item"><span>ゴールデンビル獲得</span><b>${s.goldenClicks}回</b></div>
         <div class="stats-item"><span>UFO遭遇</span><b>${s.ufoClicks}回</b></div>
+        <div class="stats-item"><span>病気を未然に防いだ回数</span><b>${s.sicknessPrevented || 0}回</b></div>
         <div class="stats-item"><span>都市合併回数</span><b>${s.prestigeCount}回</b></div>
         <div class="stats-item"><span>名声ポイント</span><b>${s.famePoints}</b></div>
         <div class="stats-item"><span>プレイ時間</span><b>${hrs}時間${mins}分</b></div>
@@ -509,7 +555,7 @@ const UI = (() => {
       dragging = true; moved = false;
       origX = entry.x; origY = entry.y;
       startX = e.clientX; startY = e.clientY;
-      el.setPointerCapture(e.pointerId);
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* 一部環境でキャプチャ不可でも致命的ではないため無視 */ }
       el.classList.add('dragging');
     });
     el.addEventListener('pointermove', (e) => {
@@ -518,16 +564,27 @@ const UI = (() => {
       const dxPct = ((e.clientX - startX) / layerRect.width) * 100;
       const dyPct = ((e.clientY - startY) / layerRect.height) * 100;
       if (Math.abs(dxPct) > 0.5 || Math.abs(dyPct) > 0.5) moved = true;
-      const fixed = Game.sanitizeLayoutPosition(origX + dxPct, origY + dyPct);
-      el.style.left = `${fixed.x}%`;
-      el.style.top = `${fixed.y}%`;
-      entry.x = fixed.x; entry.y = fixed.y;
+      // ドラッグ中はマウスに1:1で追従させる(町役場ゾーン回避を毎フレーム掛けると
+      // 表示と計算がズレて「動かせない」ように感じてしまうため、離した瞬間だけ補正する)
+      const nx = Math.min(97, Math.max(3, origX + dxPct));
+      const ny = Math.min(97, Math.max(3, origY + dyPct));
+      el.style.left = `${nx}%`;
+      el.style.top = `${ny}%`;
+      entry.x = nx; entry.y = ny;
     });
     const finishDrag = (e) => {
       if (!dragging) return;
       dragging = false;
       el.classList.remove('dragging');
-      if (moved) Game.updateLayoutPosition(entry.id, entry.x, entry.y);
+      if (moved) {
+        Game.updateLayoutPosition(entry.id, entry.x, entry.y); // 内部で町役場ゾーン回避を適用
+        const saved = Game.getLayout().find((x) => x.id === entry.id);
+        if (saved) {
+          entry.x = saved.x; entry.y = saved.y;
+          el.style.left = `${saved.x}%`;
+          el.style.top = `${saved.y}%`;
+        }
+      }
     };
     el.addEventListener('pointerup', finishDrag);
     el.addEventListener('pointercancel', finishDrag);
@@ -602,7 +659,7 @@ const UI = (() => {
       p.className = 'pedestrian';
       p.textContent = emojis[i % emojis.length];
       p.style.left = `${10 + Math.random() * 80}%`;
-      p.style.top = `${20 + Math.random() * 70}%`;
+      p.style.top = `${10 + Math.random() * 80}%`;
       container.appendChild(p);
     }
     retargetPedestrians();
@@ -613,7 +670,7 @@ const UI = (() => {
     document.querySelectorAll('.pedestrian').forEach((p) => {
       const oldX = parseFloat(p.style.left || '50');
       const nx = 6 + Math.random() * 88;
-      const ny = 15 + Math.random() * 78;
+      const ny = 8 + Math.random() * 84;
       p.style.transitionDuration = `${3 + Math.random() * 2}s`;
       p.style.transform = nx < oldX ? 'scaleX(-1)' : 'scaleX(1)';
       p.style.left = `${nx}%`;
@@ -708,6 +765,16 @@ const UI = (() => {
     } else if (evt.type === 'sickness-end') {
       $('sickness-banner').classList.add('hidden');
       if (!evt.cured) Effects.toast('😌 疫病の流行が収まった', '😌');
+      updateTopbar();
+    } else if (evt.type === 'sickness-prevented') {
+      Effects.toast('🏥 病院のおかげで疫病の流行を未然に防いだ!', '🏥');
+    } else if (evt.type === 'bgm-changed') {
+      const audio = $('bgm-audio');
+      const wasPlaying = !audio.paused;
+      audio.src = currentTrack().file;
+      if (wasPlaying) audio.play().catch(() => {});
+      Effects.toast(`🎧 BGMを「${currentTrack().name}」に切り替えました`, '🎧');
+    } else if (evt.type === 'bgm-unlocked') {
       updateTopbar();
     }
   }

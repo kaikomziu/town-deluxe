@@ -89,7 +89,8 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   100% { transform: translateY(-80vh); opacity: 0; }
 }
 
-.pedestrian-layer { position: absolute; left: 0; right: 0; top: 10%; bottom: 4%; overflow: hidden; z-index: 2; }
+/* 地面(.ground)の範囲(下46%)にぴったり合わせる。空を歩いて見えるのを防ぐため */
+.pedestrian-layer { position: absolute; left: 0; right: 0; top: 58%; bottom: 3%; overflow: hidden; z-index: 2; }
 .pedestrian {
   position: absolute; font-size: 18px; transform: translate(-50%, -50%);
   transition-property: left, top; transition-timing-function: ease-in-out;
@@ -135,15 +136,13 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   background: rgba(0,0,0,.4); border-radius: 8px; padding: 3px 8px; color: #fff; z-index: 6;
 }
 
-/* 町役場: 外側(.town-hall)はホバー拡大専用、内側(.town-hall-icon)はidle-bob/bumpアニメ専用に分離。
-   同じtransformプロパティを取り合わないので、クリック後もホバー演出が壊れない。 */
+/* 町役場: ホバー演出は不具合報告が続いたため廃止。クリック時のバンプ演出のみ残す。 */
 .town-hall {
   position: absolute; left: 50%; bottom: 6%; z-index: 8;
-  transform: translateX(-50%); transition: transform .15s ease;
+  transform: translateX(-50%);
   font-size: 64px; line-height: 1; background: none; padding: 0; border: 0;
   filter: drop-shadow(0 6px 10px rgba(0,0,0,.4));
 }
-.town-hall:hover { transform: translateX(-50%) scale(1.12); }
 .town-hall-icon { display: inline-block; animation: idle-bob 3s ease-in-out infinite; }
 .town-hall-icon.bump { animation: bump-anim .25s ease; }
 @keyframes idle-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
@@ -249,6 +248,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .mission-card.ready .mission-claim-btn { background: linear-gradient(135deg, #4caf6b, #7ed957); color: #0c1b0f; }
 .mission-card.ready { box-shadow: 0 0 12px rgba(123,220,120,.3); }
 .mission-card.claimed { opacity: .55; }
+
+.bgm-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; margin: 10px 0; }
+.bgm-row.ready { box-shadow: 0 0 10px rgba(123,220,120,.25); }
 
 .empty { text-align: center; opacity: .6; padding: 30px 10px; }
 

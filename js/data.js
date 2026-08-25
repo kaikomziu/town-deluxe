@@ -10,7 +10,7 @@ const BUILDINGS = [
   { id: 'shop',       name: '商店',        emoji: '🏪', baseCost: 1100,             baseIncome: 8,          pop: 3,   happiness: 0,  desc: '住民に商品を売って稼ぐ。' },
   { id: 'school',     name: '学校',        emoji: '🏫', baseCost: 12000,            baseIncome: 47,         pop: 6,   happiness: 2,  desc: '教育で幸福度も少しアップ。' },
   { id: 'factory',    name: '工場',        emoji: '🏭', baseCost: 130000,           baseIncome: 260,        pop: 9,   happiness: -1, desc: '大量生産できるがちょっとうるさい。' },
-  { id: 'hospital',   name: '病院',        emoji: '🏥', baseCost: 1400000,          baseIncome: 1400,       pop: 12,  happiness: 2,  desc: '住民の健康を守る安心施設。' },
+  { id: 'hospital',   name: '病院',        emoji: '🏥', baseCost: 1400000,          baseIncome: 1400,       pop: 12,  happiness: 2,  desc: '住民の健康を守る安心施設。多いほど病気の流行を未然に防ぐ。' },
   { id: 'station',    name: '駅',          emoji: '🚉', baseCost: 20000000,         baseIncome: 7800,       pop: 18,  happiness: 1,  desc: '人の流れを生み出す交通の要。' },
   { id: 'amusement',  name: '遊園地',      emoji: '🎡', baseCost: 330000000,        baseIncome: 44000,      pop: 30,  happiness: 6,  desc: '町いちばんの人気スポット。' },
   { id: 'office',     name: 'オフィスビル', emoji: '🏢', baseCost: 5100000000,       baseIncome: 260000,     pop: 55,  happiness: 0,  desc: '高層ビルで一気にビジネス拡大。' },
@@ -58,6 +58,11 @@ const SICKNESS_EVENTS = [
   { name: '食あたり',       icon: '🤢' },
   { name: '流行り病',       icon: '😷' },
   { name: '花粉症',         icon: '🌼' }
+];
+
+// BGMトラック一覧。price:0は最初から解放済み。それ以外は資金で購入して解放する
+const BGM_TRACKS = [
+  { id: 'hitoyasumi', name: 'ひとやすみ', file: 'audio/hitoyasumi.mp3', price: 0, credit: 'MusMus' }
 ];
 
 // 現在の季節(実時間の月から判定)。UIの演出と陳情の抽選の両方で共用する
@@ -229,6 +234,13 @@ function generateAchievements() {
       check: (s) => (s.sicknessCured || 0) >= v
     });
   });
+  [1, 10, 50].forEach((v) => {
+    list.push({
+      id: `ach_sickness_prevented_${v}`, name: `🏥 病気を未然に防いだ${v}回`,
+      desc: `病院の力で疫病の流行を${v}回未然に防ぐ`,
+      check: (s) => (s.sicknessPrevented || 0) >= v
+    });
+  });
 
   [1, 10, 50].forEach((v) => {
     list.push({
@@ -244,6 +256,9 @@ function generateAchievements() {
       check: (s) => (s.loginStreak || 0) >= v
     });
   });
+  if (BGM_TRACKS.length > 1) {
+    list.push({ id: 'ach_bgm_collector', name: '🎶 BGMコレクター', desc: '全てのBGMトラックを解放する', check: (s) => (s.bgmUnlocked || []).length >= BGM_TRACKS.length });
+  }
   list.push({ id: 'ach_district_first', name: '🏘️ 地区効果発生', desc: '同じ施設をまとめて配置し、地区ボーナスを発生させる', check: (s) => s.districtBonusEverActive === true });
   list.push({ id: 'ach_rank_top', name: `👑 ${RANK_TIERS[RANK_TIERS.length - 1].title}に到達`, desc: `最高位の称号「${RANK_TIERS[RANK_TIERS.length - 1].title}」を獲得する`, check: (s) => rankIndexFor(s.lifetimeMoney) >= RANK_TIERS.length - 1 });
   list.push({ id: 'ach_season_cold', name: '🥶 冬の備え', desc: '冬の陳情で「暖房設備を導入する」を選ぶ', check: (s) => (s.seasonalComplaintsResolved || []).includes('cold') });

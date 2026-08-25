@@ -336,9 +336,26 @@ const Game = (() => {
   function scheduleSickness() {
     const delay = 180000 + Math.random() * 180000; // 3~6分
     setTimeout(() => {
-      triggerSickness();
+      attemptSickness();
       scheduleSickness();
     }, delay);
+  }
+  // 予防チェック: 病院が多いほど、そもそも流行が起きにくくなる(0円でも最大95%までしか防げない=稀に起きる)
+  function preventionChance(buildingId, ratePerBuilding, cap) {
+    return Math.min(cap, buildingCount(buildingId) * ratePerBuilding);
+  }
+  function sicknessPreventionChance() {
+    return preventionChance('hospital', 0.12, 0.95);
+  }
+  function attemptSickness() {
+    if (Date.now() < state.sicknessUntil) return; // 既に流行中なら重複させない
+    const hospitals = buildingCount('hospital');
+    if (hospitals > 0 && Math.random() < sicknessPreventionChance()) {
+      state.sicknessPrevented = (state.sicknessPrevented || 0) + 1;
+      emit('event', { type: 'sickness-prevented', hospitals });
+      return;
+    }
+    triggerSickness();
   }
   function triggerSickness() {
     if (Date.now() < state.sicknessUntil) return; // 既に流行中なら重複させない
@@ -568,6 +585,26 @@ const Game = (() => {
     return state.bgmVolume;
   }
 
+  // --- BGMショップ ---
+  function buyBgmTrack(id) {
+    const track = BGM_TRACKS.find((t) => t.id === id);
+    if (!track) return false;
+    if (state.bgmUnlocked.includes(id)) return false;
+    if (!canAfford(track.price)) { Effects.sound('error'); return false; }
+    state.money -= track.price;
+    state.bgmUnlocked.push(id);
+    Effects.sound('buy');
+    emit('event', { type: 'bgm-unlocked', track });
+    return true;
+  }
+
+  function selectBgm(id) {
+    if (!state.bgmUnlocked.includes(id)) return false;
+    state.currentBgm = id;
+    emit('event', { type: 'bgm-changed', id });
+    return true;
+  }
+
   function doReset() {
     resetGame();
     state = defaultState();
@@ -583,12 +620,12 @@ const Game = (() => {
     getUfo: () => ufo, clickUfo,
     isRaining: () => Date.now() < rainUntil,
     getPetition: () => petition, resolvePetition, petitionCost,
-    isSick: () => Date.now() < state.sicknessUntil, cureSickness, sicknessCureCost,
+    isSick: () => Date.now() < state.sicknessUntil, cureSickness, sicknessCureCost, sicknessPreventionChance,
     getLayout: () => state.layout, updateLayoutPosition, sanitizeLayoutPosition, districtMultiplier,
     getRank: () => RANK_TIERS[rankIndexFor(state.lifetimeMoney)],
     getDaily: () => state.daily, claimMission,
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
-    toggleMute, toggleBgmMute, setBgmVolume, doReset, saveNow: () => saveGame(state)
+    toggleMute, toggleBgmMute, setBgmVolume, buyBgmTrack, selectBgm, doReset, saveNow: () => saveGame(state)
   };
 })();
