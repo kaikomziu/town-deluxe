@@ -1,7 +1,14 @@
 // タウンDELUXE 更新履歴
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 
 const CHANGELOG = [
+  {
+    version: '1.3.1',
+    date: '2026-08-27',
+    notes: [
+      '🎼 新規BGM「平和な町」(3,000円)「Rain on Rhodes」(20,000円)を追加。BGM選択メニューから購入・切替可能に(Mureka AI生成)'
+    ]
+  },
   {
     version: '1.3.0',
     date: '2026-08-27',
