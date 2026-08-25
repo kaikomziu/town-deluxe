@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>タウンDELUXE - 街づくり放置ゲーム</title>
+<meta name="description" content="クリックと放置で町を育てる街づくりゲーム。ゴールデンビルや花火など派手な演出満載!">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏙️</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app">
+  <canvas id="fx-canvas"></canvas>
+  <div id="toast-container"></div>
+  <div id="changelog-modal" class="modal hidden"></div>
+  <div id="confirm-modal" class="modal hidden"></div>
+
+  <header class="topbar">
+    <h1>🏙️ タウンDELUXE</h1>
+    <div class="stats">
+      <div class="stat"><span class="stat-label">資金</span><span id="stat-money">0円</span></div>
+      <div class="stat"><span class="stat-label">収入/秒</span><span id="stat-income">0円/秒</span></div>
+      <div class="stat"><span class="stat-label">人口</span><span id="stat-pop">0人</span></div>
+      <div class="stat"><span class="stat-label">幸福度</span><span id="stat-happiness">50%</span></div>
+      <div class="stat hidden" id="stat-fame-wrap"><span class="stat-label">名声</span><span id="stat-fame">0</span></div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="scene-wrap">
+      <div id="scene" class="scene">
+        <div class="sky"></div>
+        <div class="sun-moon" id="sun-moon">☀️</div>
+        <div class="clouds" id="clouds"></div>
+        <div class="rain-overlay hidden" id="rain-overlay"></div>
+        <div class="ground"></div>
+        <div class="buildings-layer" id="buildings-layer"></div>
+        <button class="golden-building hidden" id="golden-building" title="今すぐクリック!">✨🏛️✨</button>
+        <button class="ufo hidden" id="ufo" title="クリックして捕まえろ!">🛸</button>
+        <div class="combo-display hidden" id="combo-display"></div>
+        <button id="town-hall" class="town-hall" title="クリックして稼ぐ">🏛️</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="build">🏗️ 施設</button>
+        <button class="tab-btn" data-tab="upgrade">⚡ 強化</button>
+        <button class="tab-btn" data-tab="achievement">🏆 実績</button>
+        <button class="tab-btn" data-tab="stats">📊 統計</button>
+        <button class="tab-btn" data-tab="prestige">🌟 合併</button>
+      </div>
+      <div class="buy-qty" id="buy-qty">
+        <button data-qty="1" class="qty-btn active">×1</button>
+        <button data-qty="10" class="qty-btn">×10</button>
+        <button data-qty="100" class="qty-btn">×100</button>
+        <button data-qty="max" class="qty-btn">MAX</button>
+      </div>
+      <div class="tab-content" id="tab-build"></div>
+      <div class="tab-content hidden" id="tab-upgrade"></div>
+      <div class="tab-content hidden" id="tab-achievement"></div>
+      <div class="tab-content hidden" id="tab-stats"></div>
+      <div class="tab-content hidden" id="tab-prestige"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span class="ver">タウンDELUXE v<span id="version-label"></span></span>
+    <button id="mute-btn" title="ミュート切替">🔊</button>
+    <button id="save-btn" title="今すぐセーブ">💾 セーブ</button>
+    <button id="changelog-btn" title="更新履歴">📜 更新履歴</button>
+    <button id="reset-btn" title="最初からやり直す">🗑️ リセット</button>
+  </footer>
+</div>
+
+<script src="js/version.js"></script>
+<script src="js/data.js"></script>
+<script src="js/save.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
