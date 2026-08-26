@@ -140,8 +140,8 @@ const SICKNESS_EVENTS = [
 // BGMトラック一覧。price:0は最初から解放済み。それ以外は資金で購入して解放する
 const BGM_TRACKS = [
   { id: 'hitoyasumi',     name: 'ひとやすみ',   file: 'audio/hitoyasumi.mp3',     price: 0,     credit: 'MusMus' },
-  { id: 'heiwa-na-machi', name: '平和な町',     file: 'audio/heiwa-na-machi.mp3', price: 3000,  credit: 'Mureka AI' },
-  { id: 'rain-on-rhodes', name: 'Rain on Rhodes', file: 'audio/rain-on-rhodes.mp3', price: 20000, credit: 'Mureka AI' }
+  { id: 'heiwa-na-machi', name: '平和な町',     file: 'audio/heiwa-na-machi.mp3', price: 3000,  credit: 'Suno' },
+  { id: 'rain-on-rhodes', name: 'Rain on Rhodes', file: 'audio/rain-on-rhodes.mp3', price: 20000, credit: 'Suno' }
 ];
 
 // 現在の季節(実時間の月から判定)。UIの演出と陳情の抽選の両方で共用する

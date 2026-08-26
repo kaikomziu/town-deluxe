@@ -1,7 +1,15 @@
 // タウンDELUXE 更新履歴
-const VERSION = '1.6.3';
+const VERSION = '1.6.4';
 
 const CHANGELOG = [
+  {
+    version: '1.6.4',
+    date: '2026-08-27',
+    notes: [
+      '😊 幸福度による収入ブーストをUIで見えるように改善(トップバーにツールチップ、統計タブに数値表示)',
+      '🎼 BGM「平和な町」「Rain on Rhodes」のクレジット表記を修正(誤: Mureka AI → 正: Suno)'
+    ]
+  },
   {
     version: '1.6.3',
     date: '2026-08-27',
@@ -80,7 +88,7 @@ const CHANGELOG = [
     version: '1.3.1',
     date: '2026-08-27',
     notes: [
-      '🎼 新規BGM「平和な町」(3,000円)「Rain on Rhodes」(20,000円)を追加。BGM選択メニューから購入・切替可能に(Mureka AI生成)'
+      '🎼 新規BGM「平和な町」(3,000円)「Rain on Rhodes」(20,000円)を追加。BGM選択メニューから購入・切替可能に(Suno生成)'
     ]
   },
   {

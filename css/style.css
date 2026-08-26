@@ -265,6 +265,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .stats-item { background: #1f2740; border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 4px; font-size: 12px; opacity: .85; }
 .stats-item b { font-size: 15px; color: #8fd3ff; }
+.stats-sub { font-size: 11px; color: #9fe8b0; font-weight: 400; }
 
 .prestige-box { background: #1f2740; border-radius: 12px; padding: 16px; text-align: center; }
 .prestige-box p { margin: 6px 0; }

@@ -314,6 +314,8 @@ const UI = (() => {
     $('stat-income').textContent = formatNum(Game.incomePerSec()) + '円/秒';
     $('stat-pop').textContent = formatNum(s.population) + '人';
     $('stat-happiness').textContent = Math.round(s.happiness) + '%';
+    const happinessBoostPct = Math.round(s.happiness); // happinessMult = 1 + happiness/100 なので、boost%は幸福度の値と同じ
+    $('stat-happiness-wrap').title = `幸福度による収入ブースト: +${happinessBoostPct}%`;
     $('stat-fame').textContent = s.famePoints;
     $('stat-fame-wrap').title = `名声ショップで利用可能: ${Game.fameAvailable()}pt`;
     $('stat-fame-wrap').classList.toggle('hidden', s.famePoints === 0 && Game.potentialFame() === 0);
@@ -414,7 +416,7 @@ const UI = (() => {
       <div class="stats-grid">
         <div class="stats-item"><span>累計獲得資金</span><b>${formatNum(s.lifetimeMoney)}円</b></div>
         <div class="stats-item"><span>現在の人口</span><b>${formatNum(s.population)}人</b></div>
-        <div class="stats-item"><span>幸福度</span><b>${Math.round(s.happiness)}%</b></div>
+        <div class="stats-item"><span>幸福度(収入ブースト)</span><b>${Math.round(s.happiness)}% <span class="stats-sub">(収入+${Math.round(s.happiness)}%)</span></b></div>
         <div class="stats-item"><span>クリック回数</span><b>${s.totalClicks.toLocaleString()}回</b></div>
         <div class="stats-item"><span>ゴールデンビル獲得</span><b>${s.goldenClicks}回</b></div>
         <div class="stats-item"><span>UFO遭遇</span><b>${s.ufoClicks}回</b></div>
