@@ -18,6 +18,7 @@ const UI = (() => {
     bindFire();
     bindFooter();
     bindBgm();
+    bindBgmPreviewEnd();
     bindPedestrianToggle();
     renderSky();
     renderClouds();
@@ -240,8 +241,10 @@ const UI = (() => {
       if (isCurrent) action = `<button disabled>再生中</button>`;
       else if (owned) action = `<button class="bgm-select" data-id="${t.id}">選択</button>`;
       else action = `<button class="bgm-buy" data-id="${t.id}" ${s.money >= t.price ? '' : 'disabled'}>${formatNum(t.price)}円で購入</button>`;
+      const isPreviewing = previewingId === t.id;
       return `
         <div class="card bgm-row${isCurrent ? ' ready' : ''}">
+          <button class="bgm-preview-btn" data-id="${t.id}" title="試聴する">${isPreviewing ? '⏸' : '▶'}</button>
           <div class="card-body">
             <div class="card-title">${t.name}${isCurrent ? ' 🎧' : ''}</div>
             <div class="card-desc">BGM: 「${t.name}」 by ${t.credit}</div>
@@ -249,10 +252,11 @@ const UI = (() => {
           ${action}
         </div>`;
     }).join('');
-    modal.innerHTML = `<div class="modal-box"><h2>🎼 BGM選択</h2><div class="bgm-list">${rows}</div><div class="modal-actions"><button id="bgm-modal-close">閉じる</button></div></div>`;
+    modal.innerHTML = `<div class="modal-box"><h2>🎼 BGM選択</h2><p class="card-desc">▶ボタンで試聴できます</p><div class="bgm-list">${rows}</div><div class="modal-actions"><button id="bgm-modal-close">閉じる</button></div></div>`;
     modal.classList.remove('hidden');
     modal.querySelectorAll('.bgm-select').forEach((btn) => {
       btn.addEventListener('click', () => {
+        stopPreview();
         if (Game.selectBgm(btn.dataset.id)) showBgmModal();
       });
     });
@@ -264,7 +268,53 @@ const UI = (() => {
         }
       });
     });
-    $('bgm-modal-close').addEventListener('click', () => modal.classList.add('hidden'));
+    modal.querySelectorAll('.bgm-preview-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const track = BGM_TRACKS.find((t) => t.id === btn.dataset.id);
+        if (track) togglePreview(track);
+        showBgmModal();
+      });
+    });
+    $('bgm-modal-close').addEventListener('click', () => {
+      modal.classList.add('hidden');
+      stopPreview();
+    });
+  }
+
+  // --- BGM試聴(プレビュー再生) ---
+  // 本編のBGMとぶつからないよう、試聴中は本編を一時停止し、終了/停止で自動的に再開する。
+  let previewingId = null;
+  function togglePreview(track) {
+    const preview = $('bgm-preview-audio');
+    const mainAudio = $('bgm-audio');
+    if (previewingId === track.id) {
+      preview.pause();
+      preview.currentTime = 0;
+      previewingId = null;
+      if (!Game.getState().bgmMuted) mainAudio.play().catch(() => {});
+      return;
+    }
+    mainAudio.pause();
+    preview.src = track.file;
+    preview.currentTime = 0;
+    preview.volume = Game.getState().bgmVolume;
+    preview.play().catch(() => {});
+    previewingId = track.id;
+  }
+  function stopPreview() {
+    if (!previewingId) return;
+    const preview = $('bgm-preview-audio');
+    preview.pause();
+    preview.currentTime = 0;
+    previewingId = null;
+    if (!Game.getState().bgmMuted) $('bgm-audio').play().catch(() => {});
+  }
+  function bindBgmPreviewEnd() {
+    $('bgm-preview-audio').addEventListener('ended', () => {
+      previewingId = null;
+      if (!Game.getState().bgmMuted) $('bgm-audio').play().catch(() => {});
+      if (!$('changelog-modal').classList.contains('hidden')) showBgmModal();
+    });
   }
 
   function bindFooter() {

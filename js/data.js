@@ -155,8 +155,14 @@ const CRIME_EVENTS = [
 
 // BGMトラック一覧。price:0は最初から解放済み。それ以外は資金で購入して解放する
 const BGM_TRACKS = [
-  { id: 'hitoyasumi',     name: 'ひとやすみ',   file: 'audio/hitoyasumi.mp3',     price: 0,     credit: 'MusMus' },
-  { id: 'heiwa-na-machi', name: '平和な町',     file: 'audio/heiwa-na-machi.mp3', price: 3000,  credit: 'Suno' }
+  { id: 'hitoyasumi',            name: 'ひとやすみ',         file: 'audio/hitoyasumi.mp3',            price: 0,    credit: 'MusMus' },
+  { id: 'heiwa-na-machi',        name: '平和な町',           file: 'audio/heiwa-na-machi.mp3',        price: 3000, credit: 'Suno' },
+  { id: 'ohirusugi',             name: 'おひるすぎ',         file: 'audio/ohirusugi.mp3',             price: 2000, credit: 'ふぁいの音楽置き場' },
+  { id: 'nandakke',              name: 'なんだっけ?',        file: 'audio/nandakke.mp3',              price: 2000, credit: 'ふぁいの音楽置き場' },
+  { id: 'hokkori-hitotoki',      name: 'ほっこりひととき',   file: 'audio/hokkori-hitotoki.mp3',      price: 4000, credit: 'ふぁいの音楽置き場' },
+  { id: 'shizukana-toshoshitsu', name: '静かな図書室で',     file: 'audio/shizukana-toshoshitsu.mp3', price: 6000, credit: 'ふぁいの音楽置き場' },
+  { id: 'yuuutsu-amemoyou',      name: 'ゆううつ雨模様',     file: 'audio/yuuutsu-amemoyou.mp3',      price: 8000, credit: 'ふぁいの音楽置き場' },
+  { id: 'tasogare-mellow-note',  name: '黄昏メロウノート',   file: 'audio/tasogare-mellow-note.mp3',  price: 9000, credit: 'ふぁいの音楽置き場' }
 ];
 
 // 現在の季節(実時間の月から判定)。UIの演出と陳情の抽選の両方で共用する
