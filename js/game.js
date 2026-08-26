@@ -381,6 +381,7 @@ const Game = (() => {
     const delay = (90000 + Math.random() * 120000) * fameEffectMult('rainFreqMult');
     setTimeout(() => {
       rainUntil = Date.now() + 45000;
+      state.rainCount = (state.rainCount || 0) + 1;
       emit('event', { type: 'rain-start' });
       setTimeout(() => emit('event', { type: 'rain-end' }), 45000);
       scheduleRain();

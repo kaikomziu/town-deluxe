@@ -643,12 +643,89 @@ const QUESTS = [
   { id: 'm10_ach_all', stage: 10, icon: '🏆', name: '実績を全て達成しよう', desc: '実績を1つ残らず全て達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length },
   { id: 'm10_next_universe10', stage: 10, icon: '🌌', name: '「次なる宇宙の種」を10個所有しよう', desc: '真の完全制覇へ、最新施設をさらに育てる', check: (s) => (s.buildings.next_universe_seed || 0) >= 10 },
   { id: 'm10_buildings1000000', stage: 10, icon: '🏙️', name: '施設を合計1,000,000個所有しよう', desc: '種類を問わず施設を合計100万個所有する', check: (s) => totalBuildingsOwned(s) >= 1000000 },
-  { id: 'm10_final', stage: 10, icon: '🎉', name: 'タウンDELUXEを完全制覇しよう', desc: '全実績・全名声ショップ・全施設1,000個以上を同時に達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length && (s.fameShopUpgrades || []).length >= FAME_SHOP.length && BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 1000) }
+  { id: 'm10_final', stage: 10, icon: '🎉', name: 'タウンDELUXEを完全制覇しよう', desc: '全実績・全名声ショップ・全施設1,000個以上を同時に達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length && (s.fameShopUpgrades || []).length >= FAME_SHOP.length && BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 1000) },
+
+  // ここから既存stage 1〜10への追加分(上位目標の水増し・見落とし気味な指標の補完)
+  { id: 'm1_golden', stage: 1, icon: '✨', name: 'ゴールデンビルを見つけよう', desc: '町に現れるゴールデンビルを1回クリックする', check: (s) => (s.goldenClicks || 0) >= 1 },
+  { id: 'm2_rain', stage: 2, icon: '☔', name: '恵みの雨を体験しよう', desc: '雨イベント(収入1.5倍)が発生するのを待つ', check: (s) => (s.rainCount || 0) >= 1 },
+  { id: 'm2_bgmbuy', stage: 2, icon: '🎼', name: 'BGMを1曲購入しよう', desc: 'BGM選択画面で有料トラックを1つ購入する', check: (s) => (s.bgmUnlocked || []).length >= 2 },
+  { id: 'm3_clicks100', stage: 3, icon: '👆', name: '町役場を100回クリックしよう', desc: '累計クリック回数が100回に到達する', check: (s) => (s.totalClicks || 0) >= 100 },
+  { id: 'm3_season', stage: 3, icon: '🥶', name: '季節限定の陳情に応えよう', desc: '冬か夏、どちらかの季節限定陳情に設備で対応する', check: (s) => (s.seasonalComplaintsResolved || []).length >= 1 },
+  { id: 'm4_clicks1000', stage: 4, icon: '👆', name: '町役場を1,000回クリックしよう', desc: '累計クリック回数が1,000回に到達する', check: (s) => (s.totalClicks || 0) >= 1000 },
+  { id: 'm4_golden10', stage: 4, icon: '✨', name: 'ゴールデンビルを10回ゲットしよう', desc: 'ゴールデンビルを累計10回クリックする', check: (s) => (s.goldenClicks || 0) >= 10 },
+  { id: 'm4_seasonboth', stage: 4, icon: '🌦️', name: '冬夏どちらの陳情にも対応しよう', desc: '冬と夏、両方の季節限定陳情に設備で対応する', check: (s) => (s.seasonalComplaintsResolved || []).includes('cold') && (s.seasonalComplaintsResolved || []).includes('heat') },
+  { id: 'm5_login7', stage: 5, icon: '🔥', name: '連続ログイン7日を達成しよう', desc: '7日連続でプレイする', check: (s) => (s.loginStreak || 0) >= 7 },
+  { id: 'm5_bgmall', stage: 5, icon: '🎼', name: 'BGMを5曲解放しよう', desc: 'BGMトラックを合計5曲解放する', check: (s) => (s.bgmUnlocked || []).length >= 5 },
+  { id: 'm6_rank_top', stage: 6, icon: '👑', name: '最高位の称号に到達しよう', desc: `市長ランクの最高位「${RANK_TIERS[RANK_TIERS.length - 1].title}」に到達する`, check: (s) => rankIndexFor(s.lifetimeMoney) >= RANK_TIERS.length - 1 },
+  { id: 'm6_dailymission50', stage: 6, icon: '📅', name: 'デイリーミッションを50回達成しよう', desc: 'デイリーミッションの累計達成数が50回に到達する', check: (s) => (s.dailyMissionsClaimed || 0) >= 50 },
+  { id: 'm7_prevention', stage: 7, icon: '🛡️', name: '病気・火事・空き巣を10回ずつ未然に防ごう', desc: '各種予防の実績を積む', check: (s) => (s.sicknessPrevented || 0) >= 10 && ((s.hazards && s.hazards.fire && s.hazards.fire.prevented) || 0) >= 10 && (s.crimePrevented || 0) >= 10 },
+  { id: 'm7_clicks10000', stage: 7, icon: '👆', name: '町役場を10,000回クリックしよう', desc: '累計クリック回数が10,000回に到達する', check: (s) => (s.totalClicks || 0) >= 10000 },
+  { id: 'm8_happycap500', stage: 8, icon: '😊', name: '幸福度の上限を500%まで引き上げよう', desc: '幸福度政策を重ねて上限を引き上げる', check: (s) => happinessCapFromState(s) >= 500 },
+  { id: 'm8_login30', stage: 8, icon: '🔥', name: '連続ログイン30日を達成しよう', desc: '30日連続でプレイする', check: (s) => (s.loginStreak || 0) >= 30 },
+  { id: 'm9_bgmall', stage: 9, icon: '🎼', name: 'BGMを全て解放しよう', desc: `BGMトラックを全${BGM_TRACKS.length}曲解放する`, check: (s) => (s.bgmUnlocked || []).length >= BGM_TRACKS.length },
+  { id: 'm9_dailymission200', stage: 9, icon: '📅', name: 'デイリーミッションを200回達成しよう', desc: 'デイリーミッションの累計達成数が200回に到達する', check: (s) => (s.dailyMissionsClaimed || 0) >= 200 },
+
+  // Stage 11: 次元融合の扉(第2のプレステージ層に踏み出す)
+  { id: 'm11_first_fusion', stage: 11, icon: '💠', name: '初めて次元融合をしよう', desc: '都市合併タブから「次元融合」を1回行う', check: (s) => (s.dimensionFusionCount || 0) >= 1 },
+  { id: 'm11_dimshop1', stage: 11, icon: '💠', name: '次元ショップでアイテムを買おう', desc: '次元ショップのアップグレードを1個購入する', check: (s) => (s.dimensionShopUpgrades || []).length >= 1 },
+  { id: 'm11_dimshop5', stage: 11, icon: '💠', name: '次元ショップを5個購入しよう', desc: '次元ショップのアップグレードを合計5個購入する', check: (s) => (s.dimensionShopUpgrades || []).length >= 5 },
+  { id: 'm11_fusion3', stage: 11, icon: '💠', name: '次元融合を3回行おう', desc: '次元融合の累計回数が3回に到達する', check: (s) => (s.dimensionFusionCount || 0) >= 3 },
+  { id: 'm11_money1e32', stage: 11, icon: '💰', name: '累計1溝円を突破しよう', desc: '累計獲得資金が1溝円(10^32)に到達する', check: (s) => s.lifetimeMoney >= 1e32 },
+  { id: 'm11_money1e35', stage: 11, icon: '💰', name: '累計10穰円を突破しよう', desc: '累計獲得資金が10穰円(10^35)に到達する', check: (s) => s.lifetimeMoney >= 1e35 },
+  { id: 'm11_prestige60', stage: 11, icon: '🌟', name: '都市合併を60回行おう', desc: '都市合併の累計回数が60回に到達する', check: (s) => (s.prestigeCount || 0) >= 60 },
+  { id: 'm11_balanced3000', stage: 11, icon: '🌟', name: '全ての施設を3,000個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 3000) },
+  { id: 'm11_ach1200', stage: 11, icon: '🏆', name: '実績を1,200個達成しよう', desc: '実績の達成数が1,200個に到達する', check: (s) => (s.achievements || []).length >= 1200 },
+  { id: 'm11_buildings2000000', stage: 11, icon: '🏘️', name: '施設を合計2,000,000個所有しよう', desc: '種類を問わず施設を合計200万個所有する', check: (s) => totalBuildingsOwned(s) >= 2000000 },
+
+  // Stage 12: 次元経済圏
+  { id: 'm12_dimshop10', stage: 12, icon: '💠', name: '次元ショップを10個購入しよう', desc: '次元ショップのアップグレードを合計10個購入する', check: (s) => (s.dimensionShopUpgrades || []).length >= 10 },
+  { id: 'm12_dimshop_all', stage: 12, icon: '💠', name: '次元ショップを全て購入しよう', desc: `次元ショップの全${DIMENSION_SHOP.length}アイテムをコンプリートする`, check: (s) => (s.dimensionShopUpgrades || []).length >= DIMENSION_SHOP.length },
+  { id: 'm12_fusion10', stage: 12, icon: '💠', name: '次元融合を10回行おう', desc: '次元融合の累計回数が10回に到達する', check: (s) => (s.dimensionFusionCount || 0) >= 10 },
+  { id: 'm12_money1e40', stage: 12, icon: '💰', name: '累計1澗円を突破しよう', desc: '累計獲得資金が1澗円(10^40)に到達する', check: (s) => s.lifetimeMoney >= 1e40 },
+  { id: 'm12_money1e45', stage: 12, icon: '💰', name: '累計10正円を突破しよう', desc: '累計獲得資金が10正円(10^45)に到達する', check: (s) => s.lifetimeMoney >= 1e45 },
+  { id: 'm12_balanced5000', stage: 12, icon: '🌟', name: '全ての施設を5,000個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 5000) },
+  { id: 'm12_ach_all_confirm', stage: 12, icon: '🏆', name: '実績を全て達成しよう(再確認)', desc: '実績を1つ残らず全て達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length },
+  { id: 'm12_clicks100000', stage: 12, icon: '👆', name: '町役場を100,000回クリックしよう', desc: '累計クリック回数が100,000回に到達する', check: (s) => (s.totalClicks || 0) >= 100000 },
+  { id: 'm12_buildings10000000', stage: 12, icon: '🏘️', name: '施設を合計10,000,000個所有しよう', desc: '種類を問わず施設を合計1,000万個所有する', check: (s) => totalBuildingsOwned(s) >= 10000000 },
+  { id: 'm12_quests100', stage: 12, icon: '📜', name: 'ミッションを100個達成しよう', desc: '恒久ミッションの累計達成数が100個に到達する', check: (s) => (s.questsClaimed || []).length >= 100 },
+
+  // Stage 13: 完全なる名声
+  { id: 'm13_fameshop_all', stage: 13, icon: '💎', name: '名声ショップを全て購入しよう(再確認)', desc: `名声ショップの全${FAME_SHOP.length}アイテムをコンプリートする`, check: (s) => (s.fameShopUpgrades || []).length >= FAME_SHOP.length },
+  { id: 'm13_money1e60', stage: 13, icon: '💰', name: '累計1×10^60円を突破しよう', desc: '累計獲得資金が10^60円に到達する', check: (s) => s.lifetimeMoney >= 1e60 },
+  { id: 'm13_money1e70', stage: 13, icon: '💰', name: '累計1×10^70円を突破しよう', desc: '累計獲得資金が10^70円に到達する', check: (s) => s.lifetimeMoney >= 1e70 },
+  { id: 'm13_balanced10000', stage: 13, icon: '🌟', name: '全ての施設を10,000個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 10000) },
+  { id: 'm13_buildings100000000', stage: 13, icon: '🏘️', name: '施設を合計100,000,000個所有しよう', desc: '種類を問わず施設を合計1億個所有する', check: (s) => totalBuildingsOwned(s) >= 100000000 },
+  { id: 'm13_happycap3000', stage: 13, icon: '😊', name: '幸福度の上限を3,000%まで引き上げよう', desc: '幸福度政策・名声ショップ・次元ショップを重ねて上限を引き上げる', check: (s) => happinessCapFromState(s) >= 3000 },
+  { id: 'm13_fusion20', stage: 13, icon: '💠', name: '次元融合を20回行おう', desc: '次元融合の累計回数が20回に到達する', check: (s) => (s.dimensionFusionCount || 0) >= 20 },
+  { id: 'm13_prestige150', stage: 13, icon: '🌟', name: '都市合併を150回行おう', desc: '都市合併の累計回数が150回に到達する', check: (s) => (s.prestigeCount || 0) >= 150 },
+  { id: 'm13_quests150', stage: 13, icon: '📜', name: 'ミッションを150個達成しよう', desc: '恒久ミッションの累計達成数が150個に到達する', check: (s) => (s.questsClaimed || []).length >= 150 },
+
+  // Stage 14: 神話への扉(レリックショップに踏み出す)
+  { id: 'm14_first_relic', stage: 14, icon: '🏺', name: '初めてレリックを手に入れよう', desc: 'レリックショップのアイテムを1個購入する(全実績・全名声ショップの完全制覇が前提)', check: (s) => (s.relicShopUpgrades || []).length >= 1 },
+  { id: 'm14_relic4', stage: 14, icon: '🏺', name: 'レリックを4個購入しよう', desc: 'レリックショップのアイテムを合計4個購入する', check: (s) => (s.relicShopUpgrades || []).length >= 4 },
+  { id: 'm14_money1e80', stage: 14, icon: '💰', name: '累計1×10^80円を突破しよう', desc: '累計獲得資金が10^80円に到達する', check: (s) => s.lifetimeMoney >= 1e80 },
+  { id: 'm14_money1e90', stage: 14, icon: '💰', name: '累計1×10^90円を突破しよう', desc: '累計獲得資金が10^90円に到達する', check: (s) => s.lifetimeMoney >= 1e90 },
+  { id: 'm14_balanced25000', stage: 14, icon: '🌟', name: '全ての施設を25,000個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 25000) },
+  { id: 'm14_balanced50000', stage: 14, icon: '🌟', name: '全ての施設を50,000個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 50000) },
+  { id: 'm14_dimshop_all2', stage: 14, icon: '💠', name: '次元ショップの完全制覇を確認しよう', desc: `次元ショップの全${DIMENSION_SHOP.length}アイテムをコンプリートする`, check: (s) => (s.dimensionShopUpgrades || []).length >= DIMENSION_SHOP.length },
+  { id: 'm14_buildings1000000000', stage: 14, icon: '🏙️', name: '施設を合計1,000,000,000個所有しよう', desc: '種類を問わず施設を合計10億個所有する', check: (s) => totalBuildingsOwned(s) >= 1000000000 },
+  { id: 'm14_quests200', stage: 14, icon: '📜', name: 'ミッションを200個達成しよう', desc: '恒久ミッションの累計達成数が200個に到達する', check: (s) => (s.questsClaimed || []).length >= 200 },
+
+  // Stage 15: 神話級都市(真の最終段階)
+  { id: 'm15_relic_all', stage: 15, icon: '🏺', name: 'レリックショップを全て購入しよう', desc: `レリックショップの全${RELIC_SHOP.length}アイテムをコンプリートする`, check: (s) => (s.relicShopUpgrades || []).length >= RELIC_SHOP.length },
+  { id: 'm15_balanced100000', stage: 15, icon: '👑', name: '全ての施設を100,000個以上ずつ所有しよう', desc: '真の完全制覇へ向けて、全施設を極限まで育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 100000) },
+  { id: 'm15_money1e100', stage: 15, icon: '💰', name: '累計1×10^100円(1グーゴル)を突破しよう', desc: '累計獲得資金が10^100円に到達する', check: (s) => s.lifetimeMoney >= 1e100 },
+  { id: 'm15_ach_all2', stage: 15, icon: '🏆', name: '実績を全て達成しよう(再確認)', desc: '実績を1つ残らず全て達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length },
+  { id: 'm15_fusion50', stage: 15, icon: '💠', name: '次元融合を50回行おう', desc: '次元融合の累計回数が50回に到達する', check: (s) => (s.dimensionFusionCount || 0) >= 50 },
+  { id: 'm15_buildings10000000000', stage: 15, icon: '🏙️', name: '施設を合計100億個所有しよう', desc: '種類を問わず施設を合計100億個所有する', check: (s) => totalBuildingsOwned(s) >= 10000000000 },
+  { id: 'm15_quests300', stage: 15, icon: '📜', name: 'ミッションを300個達成しよう', desc: '恒久ミッションの累計達成数が300個に到達する', check: (s) => (s.questsClaimed || []).length >= 300 },
+  { id: 'm15_final', stage: 15, icon: '🎉', name: 'タウンDELUXEを神話級に完全制覇しよう', desc: '全実績・全名声ショップ・全次元ショップ・全レリック・全施設100,000個以上を同時に達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length && (s.fameShopUpgrades || []).length >= FAME_SHOP.length && (s.dimensionShopUpgrades || []).length >= DIMENSION_SHOP.length && (s.relicShopUpgrades || []).length >= RELIC_SHOP.length && BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 100000) }
 ];
 const QUESTS_BY_ID = new Map(QUESTS.map((q) => [q.id, q]));
 const QUEST_STAGE_NAMES = [
   'はじめの一歩', '町の基盤づくり', '経済成長', '拡張と発展', '更なる高み',
-  '名声への道', '銀河評議会', '第二部の入口', '無限への挑戦', '究極完全都市'
+  '名声への道', '銀河評議会', '第二部の入口', '無限への挑戦', '究極完全都市',
+  '次元融合の扉', '次元経済圏', '完全なる名声', '神話への扉', '神話級都市'
 ];
 const QUEST_STAGE_COUNT = QUESTS.reduce((max, q) => Math.max(max, q.stage), 0);
 // stageごとの報酬テーブル(index 0 = stage1)。floor未満にはならず、収入に応じてさらに上乗せされる
@@ -662,7 +739,12 @@ const QUEST_STAGE_REWARD = [
   { floor: 4000000,    mult: 220 },
   { floor: 30000000,   mult: 350 },
   { floor: 250000000,  mult: 500 },
-  { floor: 2000000000, mult: 700 }
+  { floor: 2000000000, mult: 700 },
+  { floor: 16000000000,    mult: 1000 },
+  { floor: 130000000000,   mult: 1400 },
+  { floor: 1000000000000,  mult: 2000 },
+  { floor: 8000000000000,  mult: 2800 },
+  { floor: 65000000000000, mult: 4000 }
 ];
 
 function maxAffordable(building, currentCount, money) {

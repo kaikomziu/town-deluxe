@@ -67,6 +67,7 @@ function defaultState() {
     crimePrevented: 0,
     crimeOccurred: 0,
     crimeStolenTotal: 0,
+    rainCount: 0,
     layout: [],
     muted: false,
     bgmMuted: false,
