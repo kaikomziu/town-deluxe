@@ -96,6 +96,10 @@ const UI = (() => {
         Effects.toast(`🛒 ${kinds}種類・計${formatNum(result.totalQty)}個購入(${formatNum(result.totalCost)}円)`, '🛒');
         renderBuild();
         updateTopbar();
+      } else {
+        // 何も買えなかった場合も無反応に見えないよう明示する(一番安い施設の価格を案内)
+        const cheapest = BUILDINGS.reduce((min, b) => (b.baseCost < min.baseCost ? b : min), BUILDINGS[0]);
+        Effects.toast(`😢 今は何も買えません(最安の${cheapest.name}は${formatNum(buildingCost(cheapest, Game.buildingCount(cheapest.id), 1))}円)`, '💸');
       }
     });
   }
