@@ -110,6 +110,14 @@ button:disabled { opacity: .4; cursor: not-allowed; }
   border-top: 4px solid #3f7f49;
 }
 
+/* 町のテーマ(コスメティック): 空・地面の上にtint(色)を重ねるだけの層。昼夜サイクルや
+   季節演出は.sky/.groundの背景・filterを直接変えているため、別レイヤーにすることで衝突しない。 */
+.theme-overlay {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  opacity: 0; transition: opacity .6s ease, background-color .6s ease;
+}
+.theme-overlay.active { opacity: .38; }
+
 .buildings-layer {
   position: absolute; left: 0; right: 0; top: 8%; bottom: 2%;
   overflow: hidden;
@@ -124,6 +132,7 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 @keyframes bob { 0%, 100% { transform: translate(-50%, -50%) translateY(0); } 50% { transform: translate(-50%, -50%) translateY(-4px); } }
 .building-icon.constructing { animation: construct-shake .3s ease-in-out infinite; opacity: .9; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)) grayscale(.2); }
 .building-icon.construction-complete { animation: construct-pop .5s ease; }
+.building-icon.evolved { filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)) drop-shadow(0 0 7px rgba(255,217,61,.9)); }
 @keyframes construct-shake { 0%, 100% { transform: translate(-50%, -50%) rotate(-4deg); } 50% { transform: translate(-50%, -50%) rotate(4deg); } }
 @keyframes construct-pop { 0% { transform: translate(-50%, -50%) scale(0.3); } 60% { transform: translate(-50%, -50%) scale(1.3); } 100% { transform: translate(-50%, -50%) scale(1); } }
 .building-more, #layout-overflow {
@@ -262,6 +271,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .buy-btn:hover:not(:disabled) { background: #4a66e6; }
 
 .upgrade-card .card-title { color: #ffd93d; }
+.evolution-card { background: linear-gradient(160deg, #1f2740, #2a2340); }
+.evolution-card.owned { box-shadow: 0 0 12px rgba(255,217,61,.35); }
+.card-count.evolved-badge { color: #ffd93d; margin-left: 4px; }
 
 .streak-box { background: linear-gradient(135deg, #3a2a1f, #1f2740); border-radius: 12px; padding: 12px; }
 .streak-num { font-weight: 800; font-size: 15px; color: #ff9f43; }

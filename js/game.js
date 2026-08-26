@@ -300,6 +300,10 @@ const Game = (() => {
     return true;
   }
 
+  // --- 施設進化: 通常アップグレードと同じUPGRADES_BY_ID/buyUpgradeを使い回すので、
+  // 「所持しているか」だけ専用ヘルパーで判定する(id規則 evo_<buildingId> に依存)。
+  function isEvolutionOwned(buildingId) { return state.upgrades.includes(`evo_${buildingId}`); }
+
   // --- アップグレード一括購入: 一括購入(施設)と同じ3種類の順序に対応 ---
   // アップグレードは1個ずつしか買えない(数量の概念がない)ため、購入順=どれを優先して買うかがそのまま結果を左右する。
   //   cheap(安い順)     : 安い順に並べ、残り資金の全額を使って前から買えるだけ買う
@@ -1206,6 +1210,29 @@ const Game = (() => {
     return true;
   }
 
+  // --- 町のテーマ: 次元結晶で購入する見た目だけのコスメティック(経済効果なし)。通貨は
+  // dimensionAvailable()を次元ショップ・レリックショップと共有する。
+  function isThemeOwned(id) { return (state.townThemesOwned || ['default']).includes(id); }
+  function buyTheme(id) {
+    const theme = TOWN_THEMES_BY_ID.get(id);
+    if (!theme) return false;
+    if (isThemeOwned(id)) return false;
+    if (dimensionAvailable() < theme.cost) { Effects.sound('error'); return false; }
+    state.dimensionSpent = (state.dimensionSpent || 0) + theme.cost;
+    state.townThemesOwned = state.townThemesOwned || ['default'];
+    state.townThemesOwned.push(id);
+    Effects.sound('buy');
+    emit('event', { type: 'theme-bought', theme });
+    return true;
+  }
+  function selectTheme(id) {
+    if (!isThemeOwned(id)) return false;
+    state.townTheme = id;
+    emit('event', { type: 'theme-selected', id });
+    return true;
+  }
+  function currentTheme() { return state.townTheme || 'default'; }
+
   function toggleMute() {
     state.muted = !state.muted;
     Effects.setMuted(state.muted);
@@ -1257,7 +1284,7 @@ const Game = (() => {
     init, on,
     getState: () => state,
     buildingCount, buildingMultiplier, clickMultiplier, globalMultiplier, incomePerSec,
-    buyBuilding, buyAllAffordable, buyUpgrade, buyAllUpgrades, isUpgradeUnlocked, manualClick,
+    buyBuilding, buyAllAffordable, buyUpgrade, buyAllUpgrades, isUpgradeUnlocked, isEvolutionOwned, manualClick,
     getGolden: () => goldenBuilding, clickGolden,
     getUfo: () => ufo, clickUfo,
     isRaining: () => Date.now() < rainUntil,
@@ -1284,6 +1311,7 @@ const Game = (() => {
     relicShopUnlocked, isRelicOwned, buyRelic, isFullCompletion,
     maxPopulation, isTownExpansionOwned, buyTownExpansion,
     maxHappiness, isHappinessExpansionOwned, buyHappinessExpansion,
+    isThemeOwned, buyTheme, selectTheme, currentTheme,
     toggleMute, toggleBgmMute, setBgmVolume, buyBgmTrack, selectBgm, doReset, saveNow: () => saveGame(state)
   };
 })();

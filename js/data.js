@@ -524,6 +524,21 @@ const RELIC_SHOP = [
 ];
 const RELIC_SHOP_BY_ID = new Map(RELIC_SHOP.map((r) => [r.id, r]));
 
+// --- 町のテーマ: 次元結晶で購入する、経済効果のない見た目だけのコスメティックコンテンツ。
+// 街並み(空・地面)にtint(色)を重ねるだけなので、昼夜サイクルや季節演出とは独立して共存できる。
+const TOWN_THEMES = [
+  { id: 'default',   name: '🏙️ 通常の街並み', cost: 0,  tint: null,                 blend: 'color',      desc: '標準の配色。いつでも無料で選べます。' },
+  { id: 'wafu',       name: '🎏 和風の町',     cost: 4,  tint: 'rgba(200,150,60,1)', blend: 'color',      desc: '朱色と金色に染まる、和の趣きある町並み。' },
+  { id: 'retro',      name: '📻 レトロな町',   cost: 4,  tint: 'rgba(200,140,80,1)', blend: 'color',      desc: '色褪せた写真のような、懐かしい雰囲気の町並み。' },
+  { id: 'sakura',     name: '🌸 桜色の町',     cost: 5,  tint: 'rgba(255,170,205,1)',blend: 'color',      desc: '一面が桜色に染まる、春らしい町並み。' },
+  { id: 'deepsea',    name: '🌊 深海の町',     cost: 6,  tint: 'rgba(20,70,140,1)',  blend: 'color',      desc: '深い海の底のような、静かな青に沈む町並み。' },
+  { id: 'neon',       name: '🌌 近未来の町',   cost: 6,  tint: 'rgba(90,200,255,1)', blend: 'color',      desc: 'サイバーな光に満ちた、近未来の町並み。' },
+  { id: 'halloween',  name: '🎃 ハロウィンの町', cost: 6,tint: 'rgba(150,70,190,1)', blend: 'color',      desc: '紫と橙が入り混じる、ちょっと不思議な町並み。' },
+  { id: 'monochrome', name: '🎞️ モノクロの町', cost: 8,  tint: 'rgba(128,128,128,1)',blend: 'saturation', desc: '色を失った、映画のワンシーンのような町並み。' },
+  { id: 'golden',     name: '👑 黄金郷の町',   cost: 10, tint: 'rgba(255,205,60,1)', blend: 'color',      desc: '全てが黄金に輝く、贅を尽くした町並み。' }
+];
+const TOWN_THEMES_BY_ID = new Map(TOWN_THEMES.map((t) => [t.id, t]));
+
 // デイリーミッションの候補プール。tierで報酬倍率が変わる
 const MISSION_POOL = [
   { id: 'buy_small',   metric: 'buildingsBoughtToday', target: 5,    icon: '🏗️', tier: 1, label: (t) => `施設を${t}個購入する` },
@@ -1047,9 +1062,29 @@ function generateAchievements() {
 const UPGRADES = generateUpgrades();
 const ACHIEVEMENTS = generateAchievements();
 
+// --- 施設進化(合成): 施設を大量に所有すると、進化させてさらに収入を底上げできる終盤コンテンツ。
+// 通常のアップグレード(所持数マイルストーンで2倍系、最大2,500個)と同じeffect型(mult)を使い、
+// buildingMultiplier()側の消費コードは一切変更不要。要求所持数(5,000個)・コストとも
+// 通常アップグレードよりずっと重い代わりに、一度に5倍という大きな一撃を持つ「終盤の一手」として機能する。
+// 強化タブでは通常アップグレードのリストに混ぜず、専用セクション(renderEvolutionSection)に分けて表示する。
+const EVOLUTION_REQUIRE = 5000;
+const BUILDING_EVOLUTIONS = BUILDINGS.map((b) => ({
+  id: `evo_${b.id}`,
+  buildingId: b.id,
+  require: EVOLUTION_REQUIRE,
+  cost: b.baseCost * EVOLUTION_REQUIRE * 50,
+  name: `🧬 ${b.emoji} ${b.name}の進化`,
+  desc: `${b.name}を${formatNum(EVOLUTION_REQUIRE)}個所有すると進化可能。収入が永久に5倍になり、街並みの見た目が輝くように変化する。`,
+  effect: { type: 'mult', buildingId: b.id, value: 5 }
+}));
+const BUILDING_EVOLUTIONS_BY_ID = new Map(BUILDING_EVOLUTIONS.map((e) => [e.id, e]));
+
 // id→定義 のO(1)ルックアップ用。アップグレード/名声ショップ項目が数百件規模になったため、
 // 所持数×全件数の総当たり(.find()をループ内で呼ぶ)を避けるために用意。
-const UPGRADES_BY_ID = new Map(UPGRADES.map((u) => [u.id, u]));
+// UPGRADES_BY_IDには施設進化も合流させておく(購入処理buyUpgrade/倍率計算buildingMultiplierを
+// 共通化するため)。ただし通常アップグレードの一覧配列UPGRADES自体には含めない(一括購入や
+// 通常リストに混ざらないように、表示側は専用セクションで扱う)。
+const UPGRADES_BY_ID = new Map([...UPGRADES, ...BUILDING_EVOLUTIONS].map((u) => [u.id, u]));
 const FAME_SHOP_BY_ID = new Map(FAME_SHOP.map((f) => [f.id, f]));
 
 // 町の装飾コレクション: 実績の達成数に応じて自動的に街へ現れる、経済効果のない見た目だけの飾り。

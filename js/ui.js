@@ -25,9 +25,11 @@ const UI = (() => {
     bindBgm();
     bindBgmPreviewEnd();
     bindSettingsButton();
+    bindTheme();
     renderSky();
     renderClouds();
     renderSeason();
+    renderTheme();
     setupPedestrians();
     Game.on('tick', onTick);
     Game.on('buy', onBuy);
@@ -370,6 +372,60 @@ const UI = (() => {
     });
   }
 
+  // --- 町のテーマ(コスメティック): 街並みの空・地面にtintを重ねるだけの見た目コンテンツ。
+  // 経済効果はなく、次元結晶(次元ショップ・レリックショップと共通)で購入する。
+  function bindTheme() {
+    $('theme-select-btn').addEventListener('click', showThemeModal);
+  }
+  function renderTheme() {
+    const id = Game.currentTheme();
+    const theme = TOWN_THEMES_BY_ID.get(id) || TOWN_THEMES_BY_ID.get('default');
+    const overlay = $('theme-overlay');
+    if (!theme || !theme.tint) {
+      overlay.classList.remove('active');
+      return;
+    }
+    overlay.style.backgroundColor = theme.tint;
+    overlay.style.mixBlendMode = theme.blend || 'color';
+    overlay.classList.add('active');
+  }
+  function showThemeModal() {
+    const s = Game.getState();
+    const modal = $('changelog-modal');
+    const rows = TOWN_THEMES.map((t) => {
+      const owned = Game.isThemeOwned(t.id);
+      const isCurrent = Game.currentTheme() === t.id;
+      let action;
+      if (isCurrent) action = `<button disabled>適用中</button>`;
+      else if (owned) action = `<button class="theme-select" data-id="${t.id}">選択</button>`;
+      else action = `<button class="theme-buy" data-id="${t.id}" ${Game.dimensionAvailable() >= t.cost ? '' : 'disabled'}>💠${t.cost}で購入</button>`;
+      return `
+        <div class="card bgm-row${isCurrent ? ' ready' : ''}">
+          <div class="card-body">
+            <div class="card-title">${t.name}${isCurrent ? ' ✅' : ''}</div>
+            <div class="card-desc">${t.desc}</div>
+          </div>
+          ${action}
+        </div>`;
+    }).join('');
+    modal.innerHTML = `<div class="modal-box"><h2>🎨 町のテーマ</h2><p class="card-desc">経済効果はありません。街並みの見た目を変えられます(次元結晶💠${formatNum(Game.dimensionAvailable())}個所持)</p><div class="bgm-list">${rows}</div><div class="modal-actions"><button id="theme-modal-close">閉じる</button></div></div>`;
+    modal.classList.remove('hidden');
+    modal.querySelectorAll('.theme-select').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (Game.selectTheme(btn.dataset.id)) { renderTheme(); showThemeModal(); }
+      });
+    });
+    modal.querySelectorAll('.theme-buy').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (Game.buyTheme(btn.dataset.id)) {
+          Effects.toast('🎨 新しいテーマを解放しました!', '🎨');
+          showThemeModal();
+        }
+      });
+    });
+    $('theme-modal-close').addEventListener('click', () => modal.classList.add('hidden'));
+  }
+
   function bindFooter() {
     $('mute-btn').addEventListener('click', () => {
       const muted = Game.toggleMute();
@@ -453,8 +509,9 @@ const UI = (() => {
       const count = Game.buildingCount(b.id);
       const cost = buildingCost(b, count, qty === 'max' ? Math.max(1, maxAffordable(b, count, s.money)) : qty);
       const affordable = s.money >= cost;
+      const evolved = Game.isEvolutionOwned(b.id);
       const card = document.createElement('div');
-      card.className = 'card' + (affordable ? '' : ' disabled');
+      card.className = 'card' + (affordable ? '' : ' disabled') + (evolved ? ' evolution-card owned' : '');
       const perEach = b.baseIncome * Game.buildingMultiplier(b.id) * Game.globalMultiplier();
       let preventBadge = '';
       if (b.prevention && b.prevention.sickness) {
@@ -473,9 +530,9 @@ const UI = (() => {
         preventBadge += ` <span class="district-badge" title="概念崩壊の発生自体を未然に防ぐ確率(夢想収集庁・因果律機関が多いほど上昇、最大95%)">🌀崩壊予防${Math.round(Game.collapsePreventionChance() * 100)}%</span>`;
       }
       card.innerHTML = `
-        <div class="card-icon">${b.emoji}</div>
+        <div class="card-icon">${b.emoji}${evolved ? '✨' : ''}</div>
         <div class="card-body">
-          <div class="card-title">${b.name} <span class="card-count">×${count}</span></div>
+          <div class="card-title">${b.name} <span class="card-count">×${count}</span>${evolved ? ' <span class="card-count evolved-badge">🧬進化済み</span>' : ''}</div>
           <div class="card-desc">${b.desc}</div>
           <div class="card-sub">${formatNum(perEach)}円/秒・個${preventBadge}</div>
         </div>
@@ -497,6 +554,7 @@ const UI = (() => {
     el.innerHTML = '';
     el.appendChild(renderTownExpansionSection());
     el.appendChild(renderHappinessExpansionSection());
+    el.appendChild(renderEvolutionSection());
     el.appendChild(renderUpgradeToolbar());
     const unlocked = UPGRADES.filter((u) => Game.isUpgradeUnlocked(u) && !s.upgrades.includes(u.id));
     const locked = UPGRADES.filter((u) => !Game.isUpgradeUnlocked(u) && !s.upgrades.includes(u.id));
@@ -611,6 +669,55 @@ const UI = (() => {
         if (Game.buyHappinessExpansion(e.id)) {
           if (Game.getShowBuyToasts()) Effects.toast(`${e.name} で幸福度の上限が+${formatNum(e.capBonus)}!`, '😊');
           renderUpgrades();
+          updateTopbar();
+        }
+      });
+    }
+    return card;
+  }
+
+  // --- 施設進化: 施設を5,000個以上所有すると進化候補として現れる、終盤の一括強化。
+  // まだ条件を満たす施設が1つもない間は案内文だけを出し、170種類ぶんのロック済みカードを
+  // 並べて圧迫しないようにする(街の拡張/幸福度政策と違い所持数ベースの解放条件のため)。
+  function renderEvolutionSection() {
+    const wrap = document.createElement('div');
+    const heading = document.createElement('div');
+    heading.className = 'daily-heading';
+    heading.textContent = '🧬 施設進化';
+    wrap.appendChild(heading);
+    const ready = BUILDING_EVOLUTIONS.filter((e) => Game.buildingCount(e.buildingId) >= e.require && !Game.isEvolutionOwned(e.buildingId));
+    const owned = BUILDING_EVOLUTIONS.filter((e) => Game.isEvolutionOwned(e.buildingId));
+    if (ready.length === 0 && owned.length === 0) {
+      const hint = document.createElement('p');
+      hint.className = 'card-desc';
+      hint.textContent = `いずれかの施設を${formatNum(EVOLUTION_REQUIRE)}個所有すると、ここに進化候補が現れます。`;
+      wrap.appendChild(hint);
+      return wrap;
+    }
+    ready.sort((a, b) => a.cost - b.cost).forEach((e) => wrap.appendChild(evolutionCard(e, false)));
+    owned.forEach((e) => wrap.appendChild(evolutionCard(e, true)));
+    return wrap;
+  }
+
+  function evolutionCard(e, owned) {
+    const s = Game.getState();
+    const affordable = !owned && s.money >= e.cost;
+    const card = document.createElement('div');
+    card.className = 'card upgrade-card evolution-card' + (owned ? ' owned' : (affordable ? '' : ' disabled'));
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="card-title">${e.name}</div>
+        <div class="card-desc">${e.desc}</div>
+      </div>
+      ${owned ? '<span class="owned-badge">✨進化済み</span>' : `<button class="buy-btn" ${affordable ? '' : 'disabled'}>${formatNum(e.cost)}円</button>`}
+    `;
+    if (!owned) {
+      card.querySelector('.buy-btn').addEventListener('click', () => {
+        if (Game.buyUpgrade(e.id)) {
+          Effects.toast(`${e.name} で収入が永久に5倍に!`, '🧬');
+          refreshEvolvedVisuals(e.buildingId);
+          renderUpgrades();
+          renderBuild();
           updateTopbar();
         }
       });
@@ -1023,6 +1130,7 @@ const UI = (() => {
       const span = document.createElement('span');
       span.className = 'building-icon constructing';
       span.dataset.id = entry.id;
+      span.dataset.type = entry.type;
       span.textContent = '🏗️';
       span.title = b.name;
       span.style.left = `${entry.x}%`;
@@ -1035,11 +1143,18 @@ const UI = (() => {
         span.textContent = b.emoji;
         span.classList.remove('constructing');
         span.classList.add('construction-complete');
+        if (Game.isEvolutionOwned(b.id)) span.classList.add('evolved');
         setTimeout(() => span.classList.remove('construction-complete'), 500);
       }, 700 + Math.random() * 300);
     });
 
     renderOverflowBadge();
+  }
+
+  // 施設を進化させた直後、既に街に建っている同じ種類のアイコンへ即座に光る演出を反映する
+  // (renderBuildingsLayer自体は新規レイアウト追加分しか触らないため、既存分は個別に更新する)
+  function refreshEvolvedVisuals(buildingId) {
+    $('buildings-layer').querySelectorAll(`[data-type="${buildingId}"]`).forEach((el) => el.classList.add('evolved'));
   }
 
   function renderOverflowBadge() {
