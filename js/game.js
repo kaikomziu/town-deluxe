@@ -774,20 +774,43 @@ const Game = (() => {
     const cfg = QUEST_STAGE_REWARD[Math.min(stage, QUEST_STAGE_REWARD.length) - 1];
     return Math.max(cfg.floor, Math.round(incomePerSec() * cfg.mult * fameEffectMult('missionRewardMult')));
   }
+  // 実際の付与処理(単発受け取り・一括受け取りの共通部分)
+  function applyQuestClaim(q, opts) {
+    opts = opts || {};
+    const reward = questReward(q.stage);
+    state.money += reward;
+    state.lifetimeMoney += reward;
+    state.questsClaimed = state.questsClaimed || [];
+    state.questsClaimed.push(q.id);
+    if (!opts.silent) Effects.sound('buy');
+    emit('event', { type: 'quest-claimed', quest: q, reward, silent: !!opts.silent });
+    return reward;
+  }
   function claimQuest(id) {
     const q = QUESTS_BY_ID.get(id);
     if (!q) return false;
     if (isQuestClaimed(id)) return false;
     if (!isQuestStageUnlocked(q.stage)) return false;
     if (!q.check(state)) return false;
-    const reward = questReward(q.stage);
-    state.money += reward;
-    state.lifetimeMoney += reward;
-    state.questsClaimed = state.questsClaimed || [];
-    state.questsClaimed.push(id);
-    Effects.sound('buy');
-    emit('event', { type: 'quest-claimed', quest: q, reward });
+    applyQuestClaim(q);
     return true;
+  }
+  // 「全部受け取る」: silentで連続付与し、個別のトースト・再描画は発生させない(呼び出し元が最後に1回だけ処理する)。
+  // QUESTSはstage順に並んでいるため1パスで走査すれば、途中でstageが解放されてもそのまま連鎖して受け取れる。
+  function claimAllQuests() {
+    const claimed = [];
+    let totalReward = 0;
+    QUESTS.forEach((q) => {
+      if (isQuestClaimed(q.id)) return;
+      if (!isQuestStageUnlocked(q.stage)) return;
+      if (!q.check(state)) return;
+      const reward = applyQuestClaim(q, { silent: true });
+      claimed.push({ quest: q, reward });
+      totalReward += reward;
+    });
+    Effects.sound(claimed.length > 0 ? 'buy' : 'error');
+    emit('event', { type: 'quest-claimed-all', claimed, totalReward });
+    return { claimed, totalReward };
   }
 
   // --- 連続ログイン報酬 ---
@@ -1063,7 +1086,7 @@ const Game = (() => {
     getLayout: () => state.layout,
     getRank: () => RANK_TIERS[rankIndexFor(state.lifetimeMoney)],
     getDaily: () => state.daily, claimMission,
-    markUiFlag, isQuestClaimed, isQuestStageUnlocked, questReward, claimQuest,
+    markUiFlag, isQuestClaimed, isQuestStageUnlocked, questReward, claimQuest, claimAllQuests,
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,
     getShowBuyToasts, toggleBuyToasts,
     getShowEffects, toggleEffects, getShowScreenShake, toggleScreenShake,

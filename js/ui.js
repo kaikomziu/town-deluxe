@@ -782,7 +782,9 @@ const UI = (() => {
     const el = $('tab-quest');
     if (!el) return;
     const s = Game.getState();
+    const readyCount = QUESTS.filter((q) => !Game.isQuestClaimed(q.id) && Game.isQuestStageUnlocked(q.stage) && q.check(s)).length;
     let html = '<div class="daily-heading">🎓 ミッション</div><p class="card-desc quest-intro">デイリーミッションと違い、リセットされない恒久の目標一覧です。各ステージのミッションを70%以上達成すると次のステージが解放されます。</p>';
+    html += `<button id="quest-claim-all-btn" class="buy-all-btn settings-wide-btn" ${readyCount > 0 ? '' : 'disabled'}>🎁 全部受け取る${readyCount > 0 ? `(${readyCount}件)` : ''}</button>`;
     for (let stage = 1; stage <= QUEST_STAGE_COUNT; stage++) {
       const stageQuests = QUESTS.filter((q) => q.stage === stage);
       const unlocked = Game.isQuestStageUnlocked(stage);
@@ -814,6 +816,17 @@ const UI = (() => {
         if (Game.claimQuest(btn.dataset.id)) renderQuests();
       });
     });
+    const claimAllBtn = $('quest-claim-all-btn');
+    if (claimAllBtn) {
+      claimAllBtn.addEventListener('click', () => {
+        const result = Game.claimAllQuests();
+        if (result.claimed.length > 0) {
+          Effects.toast(`🎓 ミッションを${result.claimed.length}件受け取り!+${formatNum(result.totalReward)}円`, '🎁');
+          renderQuests();
+          updateTopbar();
+        }
+      });
+    }
   }
 
   // --- 街並みシーン(購入時にランダムな位置へ設置) ---
@@ -1148,8 +1161,11 @@ const UI = (() => {
       Effects.toast(`${evt.mission.icon} デイリーミッション達成!+${formatNum(evt.mission.reward)}円`, '📅');
       updateTopbar();
     } else if (evt.type === 'quest-claimed') {
-      Effects.toast(`${evt.quest.icon} ミッション「${evt.quest.name}」達成!+${formatNum(evt.reward)}円`, '🎓');
-      updateTopbar();
+      // 「全部受け取る」でsilent:trueのまま連続で呼ばれた分は、個別トーストを出さず一括受け取り側でまとめて表示する
+      if (!evt.silent) {
+        Effects.toast(`${evt.quest.icon} ミッション「${evt.quest.name}」達成!+${formatNum(evt.reward)}円`, '🎓');
+        updateTopbar();
+      }
     } else if (evt.type === 'daily-reset') {
       if (activeTab === 'daily') renderDaily();
     } else if (evt.type === 'autosave') {
