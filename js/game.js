@@ -191,14 +191,21 @@ const Game = (() => {
   }
 
   // --- 一括購入: 「MAX」が今選んでいる1施設だけを買い占めるのに対し、こちらは全施設を対象に
-  // 安い施設から順番に買えるだけ買っていく(前の施設を買うほど資金が減り、後の施設へ回せる分が変わるため
-  // BUILDINGSの並び=価格が安い順にそのまま処理すればよい)。
-  function buyAllAffordable() {
+  // 買えるだけ買っていく。順序は3種類:
+  //   cheap(安い順)     : BUILDINGSの並び(=価格が安い順)のまま、前から順に残り資金の全額を使って買う
+  //   expensive(高い順) : 並びを逆にして、高い施設から順に残り資金の全額を使って買う
+  //   even(平等)        : 全施設種類で資金を均等割りし、各施設はその持ち分の中で買えるだけ買う
+  function buyAllAffordable(mode) {
+    mode = mode || 'cheap';
     const bought = [];
     let totalCost = 0, totalQty = 0;
-    BUILDINGS.forEach((b) => {
+    const order = mode === 'expensive' ? BUILDINGS.slice().reverse() : BUILDINGS;
+    // evenは購入が進んでも一人あたりの持ち分を変えたくないため、開始時点の資金で固定して割る
+    const evenShare = mode === 'even' ? state.money / BUILDINGS.length : null;
+    order.forEach((b) => {
       const count = buildingCount(b.id);
-      const qty = maxAffordable(b, count, state.money);
+      const budget = mode === 'even' ? evenShare : state.money;
+      const qty = maxAffordable(b, count, budget);
       if (qty <= 0) return;
       const cost = buildingCost(b, count, qty);
       if (buyBuilding(b.id, qty, { silent: true })) {
@@ -212,7 +219,7 @@ const Game = (() => {
     } else {
       Effects.sound('error');
     }
-    emit('event', { type: 'buy-all', bought, totalCost, totalQty });
+    emit('event', { type: 'buy-all', bought, totalCost, totalQty, mode });
     return { bought, totalCost, totalQty };
   }
 

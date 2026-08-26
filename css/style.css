@@ -215,6 +215,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .buy-qty { display: flex; gap: 6px; margin-bottom: 8px; }
 .qty-btn { flex: 1; background: #232a45; font-size: 12px; padding: 6px; }
 .qty-btn.active { background: #4d5ee0; }
+.buy-all-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.order-btn { flex: 1; background: #232a45; font-size: 12px; padding: 6px; }
+.order-btn.active { background: #4d5ee0; }
 .buy-all-btn { flex: 1.4; background: #2f9e63; font-size: 12px; font-weight: 700; padding: 6px; white-space: nowrap; }
 .buy-all-btn:hover:not(:disabled) { background: #38b975; }
 

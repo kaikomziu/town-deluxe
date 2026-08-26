@@ -2,6 +2,7 @@
 
 const UI = (() => {
   let qty = 1;
+  let buyAllOrder = 'cheap';
   let activeTab = 'build';
 
   function $(id) { return document.getElementById(id); }
@@ -10,6 +11,7 @@ const UI = (() => {
     $('version-label').textContent = VERSION;
     bindTabs();
     bindQty();
+    bindBuyAllOrder();
     bindBuyAll();
     bindTownHall();
     bindGolden();
@@ -72,6 +74,7 @@ const UI = (() => {
         activeTab = btn.dataset.tab;
         $(`tab-${activeTab}`).classList.remove('hidden');
         $('buy-qty').classList.toggle('hidden', activeTab !== 'build');
+        $('buy-all-row').classList.toggle('hidden', activeTab !== 'build');
         renderAll();
       });
     });
@@ -88,9 +91,19 @@ const UI = (() => {
     });
   }
 
+  function bindBuyAllOrder() {
+    document.querySelectorAll('.order-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.order-btn').forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        buyAllOrder = btn.dataset.order;
+      });
+    });
+  }
+
   function bindBuyAll() {
     $('buy-all-btn').addEventListener('click', () => {
-      const result = Game.buyAllAffordable();
+      const result = Game.buyAllAffordable(buyAllOrder);
       if (result.totalQty > 0) {
         const kinds = result.bought.length;
         Effects.toast(`🛒 ${kinds}種類・計${formatNum(result.totalQty)}個購入(${formatNum(result.totalCost)}円)`, '🛒');
