@@ -900,7 +900,7 @@ const Game = (() => {
   // famePointsは収入倍率(+2%/pt)の源泉として都市合併ごとに再計算される「総獲得量」なので、
   // ショップの購入では減らさず、代わりにfameSpent(使用済み量)を積み上げて差分を「利用可能額」とする。
   function fameAvailable() { return state.famePoints - (state.fameSpent || 0); }
-  function isFameShopTierUnlocked(tier) { return fameShopTierUnlocked(tier, state.prestigeCount); }
+  function isFameShopTierUnlocked(tier) { return fameShopTierUnlocked(tier, state.famePoints); }
   function isFameUpgradeOwned(id) { return (state.fameShopUpgrades || []).includes(id); }
   function buyFameUpgrade(id) {
     const item = FAME_SHOP_BY_ID.get(id);

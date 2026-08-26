@@ -713,7 +713,7 @@ const UI = (() => {
       const unlocked = Game.isFameShopTierUnlocked(tier);
       const header = document.createElement('div');
       header.className = 'fame-tier-header';
-      header.textContent = unlocked ? `Tier ${tier + 1}` : `🔒 都市合併${req}回で解放(現在${s.prestigeCount}回)`;
+      header.textContent = unlocked ? `Tier ${tier + 1}` : `🔒 名声ポイント${formatNum(req)}到達で解放(現在${formatNum(s.famePoints)})`;
       listEl.appendChild(header);
       items.forEach((item) => listEl.appendChild(fameCard(item, unlocked)));
     });

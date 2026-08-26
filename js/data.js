@@ -95,7 +95,7 @@ const BUILDINGS = [
   { id: 'creator_shrine',  name: '創造主の神殿',  emoji: '🔱', baseCost: 120000000000000000,  baseIncome: 6232000000, pop: 30000, happiness: 30, desc: '全てを生み出した存在を祀る、町の終着点。' },
   { id: 'eternal_archive',  name: '永劫の書庫',   emoji: '📜', baseCost: 450000000000000000, baseIncome: 12300000000, pop: 60000, happiness: 40, desc: '全ての知識と歴史が刻まれる、時を超えた書庫。町の物語はここに終わらない。' },
   // --- 第二部: 永劫の書庫の先、意識・数理・虚構・因果律・概念そのものへと広がる町の続き ---
-  { id: 'dream_archive', name: '夢想収集庁', emoji: '🌙', baseCost: 1500000000000000000, baseIncome: 25000000000, pop: 100000, happiness: 43, desc: '人々の夢を収集し記録する不思議な庁舎。眠りの中の町がここに生まれる。' },
+  { id: 'dream_archive', name: '夢想収集庁', emoji: '🌙', baseCost: 1500000000000000000, baseIncome: 25000000000, pop: 100000, happiness: 43, desc: '人々の夢を収集し記録する不思議な庁舎。眠りの中の町がここに生まれる。世界の輪郭を保つことにも一役買う。', prevention: { collapse: 0.01 } },
   { id: 'subconscious_temple', name: '深層意識神殿', emoji: '🧠', baseCost: 5000000000000000000, baseIncome: 50000000000, pop: 180000, happiness: 46, desc: '心の奥底にアクセスする神殿。潜在意識が新たな資源を生み出す。' },
   { id: 'memory_palace', name: '記憶の宮殿', emoji: '🏛️', baseCost: 17000000000000000000, baseIncome: 100000000000, pop: 320000, happiness: 49, desc: 'あらゆる記憶が保存される壮麗な宮殿。' },
   { id: 'lucid_garden', name: '明晰夢の庭園', emoji: '🌌', baseCost: 55000000000000000000, baseIncome: 200000000000, pop: 560000, happiness: 52, desc: '夢と知りながら見る夢の庭園。自在に姿を変える幻想の景色。' },
@@ -110,7 +110,7 @@ const BUILDINGS = [
   { id: 'legend_archive', name: '伝説保管庫', emoji: '📜', baseCost: 2500000000000000000000000, baseIncome: 130000000000000, pop: 86000000, happiness: 85, desc: '語り継がれるべき伝説だけを厳選して保管する書庫。' },
   { id: 'fable_theater', name: '寓話劇場', emoji: '🎭', baseCost: 8300000000000000000000000, baseIncome: 270000000000000, pop: 150000000, happiness: 88, desc: '教訓めいた寓話が上演され続ける不思議な劇場。' },
   { id: 'epic_spire', name: '叙事詩の尖塔', emoji: '🗼', baseCost: 27000000000000000000000000, baseIncome: 550000000000000, pop: 260000000, happiness: 94, desc: '幾千の叙事詩が刻まれた天を衝く尖塔。' },
-  { id: 'causality_engine', name: '因果律機関', emoji: '⚙️', baseCost: 90000000000000000000000000, baseIncome: 1100000000000000, pop: 460000000, happiness: 97, desc: '原因と結果を意のままに操る機関。町の発展速度そのものを加速させる。' },
+  { id: 'causality_engine', name: '因果律機関', emoji: '⚙️', baseCost: 90000000000000000000000000, baseIncome: 1100000000000000, pop: 460000000, happiness: 97, desc: '原因と結果を意のままに操る機関。町の発展速度そのものを加速させ、概念が崩れることも防ぐ。', prevention: { collapse: 0.04 } },
   { id: 'timeline_weave', name: '時間軸織物工房', emoji: '🕸️', baseCost: 300000000000000000000000000, baseIncome: 2300000000000000, pop: 810000000, happiness: 100, desc: '幾筋もの時間軸を織り上げる工房。歴史そのものが資源になる。' },
   { id: 'butterfly_dome', name: '蝶の羽ばたきドーム', emoji: '🦋', baseCost: 1000000000000000000000000000, baseIncome: 4700000000000000, pop: 1400000000, happiness: 103, desc: '小さな羽ばたきが大きな結果を生む様を観測するドーム。' },
   { id: 'destiny_court', name: '運命裁定所', emoji: '⚖️', baseCost: 3300000000000000000000000000, baseIncome: 9600000000000000, pop: 2500000000, happiness: 106, desc: '町の運命そのものを裁定する法廷。判決は常に繁栄。' },
@@ -134,7 +134,48 @@ const BUILDINGS = [
   { id: 'singularity_core', name: '特異点の核', emoji: '🕳️', baseCost: 6300000000000000000000000000000000000, baseIncome: 4100000000000000000000, pop: 59000000000000, happiness: 172, desc: 'あらゆる法則が意味を失う特異点。その核から力を引き出す。' },
   { id: 'reset_sanctuary', name: '再創造の聖域', emoji: '♻️', baseCost: 21000000000000000000000000000000000000, baseIncome: 8400000000000000000000, pop: 103000000000000, happiness: 175, desc: '全てが終わり、また始まる場所。町の物語はここで生まれ変わる。' },
   { id: 'genesis_loop', name: '創世のループ', emoji: '🔄', baseCost: 69000000000000000000000000000000000000, baseIncome: 17000000000000000000000, pop: 180000000000000, happiness: 178, desc: '創世と終焉が絶えず繰り返されるループ。' },
-  { id: 'next_universe_seed', name: '次なる宇宙の種', emoji: '🌌', baseCost: 230000000000000000000000000000000000000, baseIncome: 35000000000000000000000, pop: 316000000000000, happiness: 184, desc: '次の宇宙を芽吹かせる種。この町の物語は、まだ終わらない。' }
+  { id: 'next_universe_seed', name: '次なる宇宙の種', emoji: '🌌', baseCost: 230000000000000000000000000000000000000, baseIncome: 35000000000000000000000, pop: 316000000000000, happiness: 184, desc: '次の宇宙を芽吹かせる種。この町の物語は、まだ終わらない。' },
+  // --- 第三部: 芽吹いた次なる宇宙で、恒星の誕生から生命・文明・そして自分自身の物語へと続く町の続き ---
+  { id: 'star_nursery', name: '星の産室', emoji: '⭐', baseCost: 300000000000000000000000000000000000000, baseIncome: 70000000000000000000000, pop: 600000000000000000, happiness: 187, desc: '新たに生まれた宇宙で、最初の恒星が生まれる場所。' },
+  { id: 'nebula_garden', name: '星雲の庭', emoji: '🌸', baseCost: 1000000000000000000000000000000000000000, baseIncome: 140000000000000000000000, pop: 1100000000000000000, happiness: 190, desc: '色とりどりの星雲が花のように咲き誇る庭。' },
+  { id: 'planet_forge', name: '惑星鍛造所', emoji: '🪐', baseCost: 3300000000000000000000000000000000000000, baseIncome: 290000000000000000000000, pop: 1900000000000000000, happiness: 193, desc: 'ガスと塵から新たな惑星を鍛え上げる工房。' },
+  { id: 'comet_way', name: '彗星の通り道', emoji: '☄️', baseCost: 11000000000000000000000000000000000000000, baseIncome: 600000000000000000000000, pop: 3300000000000000000, happiness: 196, desc: '幾多の彗星が行き交う、新生宇宙の目抜き通り。' },
+  { id: 'first_life_pond', name: '原初生命の池', emoji: '🦠', baseCost: 36000000000000000000000000000000000000000, baseIncome: 1200000000000000000000000, pop: 5800000000000000000, happiness: 202, desc: '新宇宙で最初の生命が芽吹いた、小さな池。' },
+  { id: 'photosynthesis_field', name: '光合成の野', emoji: '🌿', baseCost: 120000000000000000000000000000000000000000, baseIncome: 2500000000000000000000000, pop: 10000000000000000000, happiness: 205, desc: '緑が世界を覆い始めた、酸素豊かな大地。' },
+  { id: 'reef_of_origin', name: '起源の礁', emoji: '🐚', baseCost: 400000000000000000000000000000000000000000, baseIncome: 5100000000000000000000000, pop: 18000000000000000000, happiness: 208, desc: 'あらゆる生物の祖先が集った、始まりの珊瑚礁。' },
+  { id: 'dawn_of_mind', name: '心の夜明け', emoji: '🧬', baseCost: 1300000000000000000000000000000000000000000, baseIncome: 10500000000000000000000000, pop: 31000000000000000000, happiness: 211, desc: '初めて「考える」ことを覚えた生命が現れた。' },
+  { id: 'tribal_hearth', name: '原始の炉端', emoji: '🔥', baseCost: 4400000000000000000000000000000000000000000, baseIncome: 22000000000000000000000000, pop: 54000000000000000000, happiness: 214, desc: '火を囲み、初めて言葉を交わした一族の炉端。' },
+  { id: 'stone_settlement', name: '石器の集落', emoji: '🪨', baseCost: 14000000000000000000000000000000000000000000, baseIncome: 45000000000000000000000000, pop: 95000000000000000000, happiness: 220, desc: '石器を手にした人々が根を下ろした最初の集落。' },
+  { id: 'first_writing_hall', name: '文字誕生の間', emoji: '📝', baseCost: 49000000000000000000000000000000000000000000, baseIncome: 92000000000000000000000000, pop: 170000000000000000000, happiness: 223, desc: '初めて思考が文字として刻まれた記録の間。' },
+  { id: 'bronze_workshop', name: '青銅の工房', emoji: '🔔', baseCost: 160000000000000000000000000000000000000000000, baseIncome: 190000000000000000000000000, pop: 290000000000000000000, happiness: 226, desc: '金属を操る技術が花開いた工房。' },
+  { id: 'irrigation_canal', name: '灌漑の水路', emoji: '💧', baseCost: 540000000000000000000000000000000000000000000, baseIncome: 390000000000000000000000000, pop: 510000000000000000000, happiness: 229, desc: '砂漠に緑をもたらす、文明を支える水路。' },
+  { id: 'great_library_ii', name: '再生の大図書館', emoji: '📚', baseCost: 1800000000000000000000000000000000000000000000, baseIncome: 800000000000000000000000000, pop: 900000000000000000000, happiness: 235, desc: '失われた第一の書庫の記憶を継ぐ、新たな大図書館。' },
+  { id: 'philosopher_agora', name: '哲人たちの広場', emoji: '🏺', baseCost: 6000000000000000000000000000000000000000000000, baseIncome: 1650000000000000000000000000, pop: 1600000000000000000000, happiness: 238, desc: '新たな賢者たちが真理を語り合う広場。' },
+  { id: 'star_chart_observatory', name: '星図の天文台', emoji: '🔭', baseCost: 20000000000000000000000000000000000000000000000, baseIncome: 3400000000000000000000000000, pop: 2800000000000000000000, happiness: 241, desc: '再び宇宙を見上げ、星々の地図を描き始めた天文台。' },
+  { id: 'printing_guild', name: '印刷ギルド', emoji: '🖨️', baseCost: 67000000000000000000000000000000000000000000000, baseIncome: 7000000000000000000000000000, pop: 4900000000000000000000, happiness: 244, desc: '知識を大量に複製し、世界へ広めるギルド。' },
+  { id: 'steam_foundry', name: '蒸気鋳造所', emoji: '⚙️', baseCost: 220000000000000000000000000000000000000000000000, baseIncome: 14500000000000000000000000000, pop: 8600000000000000000000, happiness: 247, desc: '蒸気の力で新たな産業革命を起こす鋳造所。' },
+  { id: 'electric_dawn', name: '電気の夜明け', emoji: '💡', baseCost: 740000000000000000000000000000000000000000000000, baseIncome: 30000000000000000000000000000, pop: 15000000000000000000000, happiness: 250, desc: '闇を照らす電気の光が世界を変え始めた。' },
+  { id: 'radio_tower_ii', name: '再生の電波塔', emoji: '📡', baseCost: 2500000000000000000000000000000000000000000000000, baseIncome: 62000000000000000000000000000, pop: 27000000000000000000000, happiness: 256, desc: '新宇宙初の電波が空へ放たれた塔。' },
+  { id: 'first_flight_field', name: '初飛行の滑走路', emoji: '✈️', baseCost: 8100000000000000000000000000000000000000000000000, baseIncome: 130000000000000000000000000000, pop: 47000000000000000000000, happiness: 259, desc: '新たな文明が初めて空へ羽ばたいた滑走路。' },
+  { id: 'orbital_dock', name: '軌道ドック', emoji: '🛰️', baseCost: 27000000000000000000000000000000000000000000000000, baseIncome: 260000000000000000000000000000, pop: 83000000000000000000000, happiness: 262, desc: '再び宇宙へ進出するための軌道上のドック。' },
+  { id: 'second_moon_base', name: '第二の月面基地', emoji: '🌕', baseCost: 90000000000000000000000000000000000000000000000000, baseIncome: 540000000000000000000000000000, pop: 150000000000000000000000, happiness: 265, desc: '新たな月に築かれた入植基地。' },
+  { id: 'exo_colony', name: '系外植民地', emoji: '🪐', baseCost: 300000000000000000000000000000000000000000000000000, baseIncome: 1100000000000000000000000000000, pop: 260000000000000000000000, happiness: 271, desc: '太陽系の外へ広がった最初の植民地。' },
+  { id: 'galactic_senate', name: '銀河元老院', emoji: '🏛️', baseCost: 990000000000000000000000000000000000000000000000000, baseIncome: 2300000000000000000000000000000, pop: 450000000000000000000000, happiness: 274, desc: '新生銀河文明をまとめる合議の場。' },
+  { id: 'warp_relay', name: 'ワープ中継基地', emoji: '🌀', baseCost: 3300000000000000000000000000000000000000000000000000, baseIncome: 4700000000000000000000000000000, pop: 800000000000000000000000, happiness: 277, desc: '瞬時に星々を結ぶワープ航路の中継地点。' },
+  { id: 'dyson_ring', name: 'ダイソンリング', emoji: '☀️', baseCost: 11000000000000000000000000000000000000000000000000000, baseIncome: 9700000000000000000000000000000, pop: 1400000000000000000000000, happiness: 280, desc: '恒星を丸ごと覆い、無尽蔵のエネルギーを得る巨大構造物。' },
+  { id: 'mind_upload_center', name: '意識転写センター', emoji: '🧠', baseCost: 37000000000000000000000000000000000000000000000000000, baseIncome: 20000000000000000000000000000000, pop: 2500000000000000000000000, happiness: 286, desc: '生命の意識をデータへと転写する施設。' },
+  { id: 'digital_civilization', name: 'デジタル文明圏', emoji: '💻', baseCost: 120000000000000000000000000000000000000000000000000000, baseIncome: 41000000000000000000000000000000, pop: 4400000000000000000000000, happiness: 289, desc: '肉体を離れ、情報として存続する文明。' },
+  { id: 'quantum_senate', name: '量子元老院', emoji: '⚛️', baseCost: 410000000000000000000000000000000000000000000000000000, baseIncome: 85000000000000000000000000000000, pop: 7700000000000000000000000, happiness: 292, desc: '量子の重ね合わせの中で議論を続ける元老院。' },
+  { id: 'hyperverse_gate', name: '超宇宙への門', emoji: '🌌', baseCost: 1400000000000000000000000000000000000000000000000000000, baseIncome: 175000000000000000000000000000000, pop: 14000000000000000000000000, happiness: 295, desc: 'この宇宙のさらに外側、超宇宙へ通じる門。' },
+  { id: 'reality_loom', name: '現実の織機', emoji: '🕸️', baseCost: 4600000000000000000000000000000000000000000000000000000, baseIncome: 360000000000000000000000000000000, pop: 24000000000000000000000000, happiness: 298, desc: '現実そのものを織り上げる、神話的な織機。' },
+  { id: 'omega_point', name: 'オメガポイント', emoji: 'Ω', baseCost: 15000000000000000000000000000000000000000000000000000000, baseIncome: 740000000000000000000000000000000, pop: 42000000000000000000000000, happiness: 304, desc: '全ての情報と意識が収束する究極の一点。' },
+  { id: 'second_creator_shrine', name: '二代目・創造主の神殿', emoji: '🔱', baseCost: 52000000000000000000000000000000000000000000000000000000, baseIncome: 1500000000000000000000000000000000, pop: 74000000000000000000000000, happiness: 307, desc: 'かつての神殿の記憶を受け継ぐ、新たな聖域。' },
+  { id: 'infinite_recursion_hall', name: '無限再帰の間', emoji: '♾️', baseCost: 170000000000000000000000000000000000000000000000000000000, baseIncome: 3200000000000000000000000000000000, pop: 130000000000000000000000000, happiness: 310, desc: 'この町の物語自体が、また新しい町を生み出し始める間。' },
+  { id: 'author_of_worlds', name: '世界の著者の座', emoji: '✍️', baseCost: 590000000000000000000000000000000000000000000000000000000, baseIncome: 6500000000000000000000000000000000, pop: 230000000000000000000000000, happiness: 313, desc: '幾多の宇宙を書き綴ってきた「著者」が座す場所。' },
+  { id: 'final_question_hall', name: '最後の問いの間', emoji: '❓', baseCost: 2000000000000000000000000000000000000000000000000000000000, baseIncome: 13500000000000000000000000000000000, pop: 400000000000000000000000000, happiness: 319, desc: '「なぜ町は続くのか」という問いだけが残された間。' },
+  { id: 'unwritten_epilogue', name: 'まだ書かれていないあとがき', emoji: '📖', baseCost: 6900000000000000000000000000000000000000000000000000000000, baseIncome: 28000000000000000000000000000000000, pop: 700000000000000000000000000, happiness: 322, desc: 'この町の物語には、まだ続きがある。' },
+  { id: 'town_deluxe_prime', name: 'タウンDELUXE・プライム', emoji: '🏙️', baseCost: 24000000000000000000000000000000000000000000000000000000000, baseIncome: 57000000000000000000000000000000000, pop: 1200000000000000000000000000, happiness: 328, desc: '全ての町の頂点に立つ、究極の町。ここから先は、あなた次第。' },
+  { id: 'beyond_the_game', name: 'ゲームの向こう側', emoji: '🌟', baseCost: 80000000000000000000000000000000000000000000000000000000000, baseIncome: 120000000000000000000000000000000000, pop: 2200000000000000000000000000, happiness: 335, desc: '画面の外にも、きっと町は続いている。' }
 ];
 
 function buildingCost(building, currentCount, qty) {
@@ -192,6 +233,16 @@ const CRIME_EVENTS = [
   { name: 'スリ被害',     icon: '👛' },
   { name: '詐欺被害',     icon: '📞' },
   { name: '強盗',         icon: '🦹' }
+];
+
+// 概念崩壊イベントのバリエーション(フレーバー用)。夢想収集庁・因果律機関が予防を担う第二部専用ハザード。
+// 病気・火事と同じ「予防→軽減→早期鎮圧」の型を踏襲する。
+const COLLAPSE_EVENTS = [
+  { name: '因果のほつれ',   icon: '🌀' },
+  { name: '記憶の逆流',     icon: '🧠' },
+  { name: '論理矛盾',       icon: '❓' },
+  { name: '現実のノイズ',   icon: '📺' },
+  { name: '次元の裂け目',   icon: '🕳️' }
 ];
 
 // BGMトラック一覧。price:0は最初から解放済み。それ以外は資金で購入して解放する
@@ -255,7 +306,17 @@ const TOWN_EXPANSIONS = [
   { id: 'expand_19', cost: 500000000000000000000,       popBonus: 890000000,   name: '🔢 数理都市 II',       desc: '最大人口がさらに+890,000,000人される。' },
   { id: 'expand_20', cost: 5000000000000000000000,      popBonus: 2100000000,  name: '♾️ 無限都市計画 I',    desc: '最大人口がさらに+2,100,000,000人される。' },
   { id: 'expand_21', cost: 50000000000000000000000,     popBonus: 5100000000,  name: '♾️ 無限都市計画 II',   desc: '最大人口がさらに+5,100,000,000人される。' },
-  { id: 'expand_22', cost: 500000000000000000000000,    popBonus: 12000000000, name: '🌠 全存在都市連邦',    desc: 'あらゆる存在を受け入れる、最大人口が+12,000,000,000人される。' }
+  { id: 'expand_22', cost: 500000000000000000000000,    popBonus: 12000000000, name: '🌠 全存在都市連邦',    desc: 'あらゆる存在を受け入れる、最大人口が+12,000,000,000人される。' },
+  { id: 'expand_23', cost: 5000000000000000000000000,        popBonus: 29000000000,    name: '🌟 恒星系都市網 I',   desc: '最大人口がさらに+29,000,000,000人される。' },
+  { id: 'expand_24', cost: 50000000000000000000000000,       popBonus: 70000000000,    name: '🌟 恒星系都市網 II',  desc: '最大人口がさらに+70,000,000,000人される。' },
+  { id: 'expand_25', cost: 500000000000000000000000000,      popBonus: 170000000000,   name: '🧬 生命圏都市 I',     desc: '生命の萌える星々を取り込み、最大人口が+170,000,000,000人される。' },
+  { id: 'expand_26', cost: 5000000000000000000000000000,     popBonus: 410000000000,   name: '🧬 生命圏都市 II',    desc: '最大人口がさらに+410,000,000,000人される。' },
+  { id: 'expand_27', cost: 50000000000000000000000000000,    popBonus: 980000000000,   name: '🏛️ 文明圏都市 I',     desc: '幾多の文明を束ねる圏域を築き、最大人口が+980,000,000,000人される。' },
+  { id: 'expand_28', cost: 500000000000000000000000000000,   popBonus: 2400000000000,  name: '🏛️ 文明圏都市 II',    desc: '最大人口がさらに+2,400,000,000,000人される。' },
+  { id: 'expand_29', cost: 5000000000000000000000000000000,  popBonus: 5800000000000,  name: '🌌 超宇宙都市網 I',   desc: 'この宇宙の外へも広がり、最大人口が+5,800,000,000,000人される。' },
+  { id: 'expand_30', cost: 50000000000000000000000000000000, popBonus: 14000000000000, name: '🌌 超宇宙都市網 II',  desc: '最大人口がさらに+14,000,000,000,000人される。' },
+  { id: 'expand_31', cost: 500000000000000000000000000000000, popBonus: 34000000000000, name: '✍️ 物語世界都市 I',   desc: '物語そのものの中に築かれた都市。最大人口が+34,000,000,000,000人される。' },
+  { id: 'expand_32', cost: 5000000000000000000000000000000000, popBonus: 82000000000000, name: '✍️ 物語世界都市 II', desc: '最大人口がさらに+82,000,000,000,000人される。' }
 ];
 const TOWN_EXPANSIONS_BY_ID = new Map(TOWN_EXPANSIONS.map((e) => [e.id, e]));
 
@@ -284,14 +345,26 @@ const HAPPINESS_EXPANSIONS = [
   { id: 'happy_19', cost: 500000000000000000000,       capBonus: 1100, name: '💫 幸福の特異点 II',    desc: '幸福度の上限が永久にさらに+1,100される。' },
   { id: 'happy_20', cost: 5000000000000000000000,      capBonus: 1450, name: '🕉️ 無上の悦楽郷 I',    desc: '幸福度の上限が永久にさらに+1,450される。' },
   { id: 'happy_21', cost: 50000000000000000000000,     capBonus: 1900, name: '🕉️ 無上の悦楽郷 II',   desc: '幸福度の上限が永久にさらに+1,900される。' },
-  { id: 'happy_22', cost: 500000000000000000000000,    capBonus: 2500, name: '♾️ 幸福度、無限大',     desc: '幸福度の上限が永久にさらに+2,500され、もはや上限という概念が意味を失う。' }
+  { id: 'happy_22', cost: 500000000000000000000000,    capBonus: 2500, name: '♾️ 幸福度、無限大',     desc: '幸福度の上限が永久にさらに+2,500され、もはや上限という概念が意味を失う。' },
+  { id: 'happy_23', cost: 5000000000000000000000000,        capBonus: 3300,  name: '🕊️ 悟りの郷 III',      desc: '幸福度の上限が永久にさらに+3,300される。' },
+  { id: 'happy_24', cost: 50000000000000000000000000,       capBonus: 4360,  name: '🌸 涅槃の境地 I',       desc: '幸福度の上限が永久にさらに+4,360される。' },
+  { id: 'happy_25', cost: 500000000000000000000000000,      capBonus: 5760,  name: '🌸 涅槃の境地 II',      desc: '幸福度の上限が永久にさらに+5,760される。' },
+  { id: 'happy_26', cost: 5000000000000000000000000000,     capBonus: 7600,  name: '🌈 至福の彼方 I',       desc: '幸福度の上限が永久にさらに+7,600される。' },
+  { id: 'happy_27', cost: 50000000000000000000000000000,    capBonus: 10030, name: '🌈 至福の彼方 II',      desc: '幸福度の上限が永久にさらに+10,030される。' },
+  { id: 'happy_28', cost: 500000000000000000000000000000,   capBonus: 13240, name: '💫 幸福の特異点 III',   desc: '幸福度の上限が永久にさらに+13,240される。' },
+  { id: 'happy_29', cost: 5000000000000000000000000000000,  capBonus: 17480, name: '💫 幸福の特異点 IV',    desc: '幸福度の上限が永久にさらに+17,480される。' },
+  { id: 'happy_30', cost: 50000000000000000000000000000000, capBonus: 23070, name: '🕉️ 無上の悦楽郷 III',  desc: '幸福度の上限が永久にさらに+23,070される。' },
+  { id: 'happy_31', cost: 500000000000000000000000000000000, capBonus: 30450, name: '🕉️ 無上の悦楽郷 IV',  desc: '幸福度の上限が永久にさらに+30,450される。' },
+  { id: 'happy_32', cost: 5000000000000000000000000000000000, capBonus: 40190, name: '♾️ 幸福、そのものへ', desc: '幸福度の上限が永久にさらに+40,190される。幸福はもはや度合いですらない。' }
 ];
 const HAPPINESS_EXPANSIONS_BY_ID = new Map(HAPPINESS_EXPANSIONS.map((e) => [e.id, e]));
 
 // 名声ショップ: 都市合併で得た名声ポイントを使って買う恒久アップグレード(合併しても失われない)。
-// tierは解放に必要な累計都市合併回数(FAME_SHOP_TIER_REQUIREMENTのインデックスに対応)で、
-// 周回(都市合併)を重ねるほど新しいティアが開放されていくエンドコンテンツ。
-const FAME_SHOP_TIER_REQUIREMENT = [0, 3, 7, 15, 30, 50, 75, 110, 160, 230, 320];
+// tierは解放に必要な累計名声ポイント(famePoints。都市合併のたびに更新される、使っても減らない
+// 生涯到達値。FAME_SHOP_TIER_REQUIREMENTのインデックスに対応)で、稼いだ名声そのものが
+// 大きくなるほど新しいティアが開放されていくエンドコンテンツ(かつては都市合併の「回数」で
+// 解放していたが、周回数だけ稼ぐ空合併が有利になってしまうため、稼いだ名声の大きさで見るよう変更)。
+const FAME_SHOP_TIER_REQUIREMENT = [0, 15, 50, 150, 400, 800, 1500, 3000, 6000, 12000, 25000];
 const FAME_SHOP = [
   // Tier 1: いつでも購入可(名声ポイントさえあれば)
   { id: 'fame_income_1',  tier: 0, cost: 5,   name: '💹 効率化都市計画 I',   desc: '全施設の収入が永久に+10%される。',                       effect: { type: 'incomeMult', value: 1.10 } },
@@ -300,7 +373,7 @@ const FAME_SHOP = [
   { id: 'fame_rain_1',    tier: 0, cost: 8,   name: '☀️ 気象予報士常駐',     desc: '恵みの雨イベントが永久に約25%発生しやすくなる。',           effect: { type: 'rainFreqMult', value: 0.75 } },
   { id: 'fame_ufo_1',     tier: 0, cost: 8,   name: '🛸 電波観測所 I',       desc: 'UFOが永久に約20%出現しやすくなる。',                       effect: { type: 'ufoFreqMult', value: 0.8 } },
   { id: 'fame_petition_time_1', tier: 0, cost: 6, name: '⏳ 陳情猶予延長 I',  desc: '陳情に答えられる制限時間が永久に+20%延長される。',           effect: { type: 'petitionTimeMult', value: 1.2 } },
-  // Tier 2: 都市合併3回で解放
+  // Tier 2: 名声ポイント15到達で解放
   { id: 'fame_income_2',  tier: 1, cost: 20,  name: '💹 効率化都市計画 II',  desc: '全施設の収入が永久にさらに+15%される。',                   effect: { type: 'incomeMult', value: 1.15 } },
   { id: 'fame_offline_1', tier: 1, cost: 25,  name: '🌙 越境オフライン協定', desc: 'オフライン収益の上限が8時間→16時間に延長される。',           effect: { type: 'offlineCapHours', value: 16 } },
   { id: 'fame_hospital_1',tier: 1, cost: 25,  name: '🛡️ 医療ネットワーク強化', desc: '医療系施設による病気予防の効果が永久に+30%される。',        effect: { type: 'preventionMult', value: 1.30 } },
@@ -309,7 +382,7 @@ const FAME_SHOP = [
   { id: 'fame_happiness_0',tier: 1, cost: 18, name: '🎗️ 町政運営基盤',      desc: '町の幸福度基準値が永久に+8される。',                       effect: { type: 'happinessBonusFlat', value: 8 } },
   { id: 'fame_sickness_severity_1', tier: 1, cost: 22, name: '💊 公衆衛生キャンペーン I', desc: '病気イベントの深刻度が永久に約20%軽減される。',    effect: { type: 'sicknessSeverityMult', value: 0.8 } },
   { id: 'fame_mission_1', tier: 1, cost: 20,  name: '🎯 ミッション報奨金 I',  desc: 'デイリーミッションの報酬が永久に+20%される。',             effect: { type: 'missionRewardMult', value: 1.2 } },
-  // Tier 3: 都市合併7回で解放
+  // Tier 3: 名声ポイント50到達で解放
   { id: 'fame_income_3',  tier: 2, cost: 60,  name: '💹 効率化都市計画 III', desc: '全施設の収入が永久にさらに+20%される。',                   effect: { type: 'incomeMult', value: 1.20 } },
   { id: 'fame_autobuy',   tier: 2, cost: 80,  name: '🤖 執事の自動購入',     desc: '買える中で最も安い施設を自動で購入してくれる執事を雇う。',   effect: { type: 'autoBuy', value: true } },
   { id: 'fame_offline_2', tier: 2, cost: 60,  name: '🌙 越境オフライン協定 II', desc: 'オフライン収益の上限が16時間→24時間に延長される。',      effect: { type: 'offlineCapHours', value: 24 } },
@@ -319,7 +392,7 @@ const FAME_SHOP = [
   { id: 'fame_prevention_2', tier: 2, cost: 55, name: '🛡️ 医療ネットワーク強化 II', desc: '医療系施設による病気予防の効果が永久にさらに+20%される。', effect: { type: 'preventionMult', value: 1.20 } },
   { id: 'fame_sickness_duration_1', tier: 2, cost: 55, name: '⏱️ 早期収束プロトコル I', desc: '病気イベントの流行期間が永久に約20%短縮される。',  effect: { type: 'sicknessDurationMult', value: 0.8 } },
   { id: 'fame_petition_time_2', tier: 2, cost: 50, name: '⏳ 陳情猶予延長 II', desc: '陳情に答えられる制限時間が永久にさらに+20%延長される。',   effect: { type: 'petitionTimeMult', value: 1.2 } },
-  // Tier 4: 都市合併15回で解放(真のエンドコンテンツ)
+  // Tier 4: 名声ポイント150到達で解放(真のエンドコンテンツ)
   { id: 'fame_income_4',  tier: 3, cost: 200, name: '💹 効率化都市計画 IV',  desc: '全施設の収入が永久にさらに+30%される。',                   effect: { type: 'incomeMult', value: 1.30 } },
   { id: 'fame_happiness_1',tier: 3, cost: 250, name: '🌌 銀河評議会の椅子', desc: '町の幸福度基準値が永久に+15される。',                     effect: { type: 'happinessBonusFlat', value: 15 } },
   { id: 'fame_prestige_th',tier: 3, cost: 300, name: '👑 伝説の統治',       desc: '都市合併に必要な累計資金がずっと10%引き下げられる。',       effect: { type: 'prestigeThresholdMult', value: 0.9 } },
@@ -328,7 +401,7 @@ const FAME_SHOP = [
   { id: 'fame_ufo_2',     tier: 3, cost: 200, name: '🛸 電波観測所 II',      desc: 'UFOが永久にさらに約25%出現しやすくなる。',                 effect: { type: 'ufoFreqMult', value: 0.75 } },
   { id: 'fame_mission_2', tier: 3, cost: 220, name: '🎯 ミッション報奨金 II', desc: 'デイリーミッションの報酬が永久にさらに+20%される。',       effect: { type: 'missionRewardMult', value: 1.2 } },
   { id: 'fame_gain_1',    tier: 3, cost: 280, name: '🎖️ 名声増幅回路 I',    desc: '都市合併で得られる名声ポイントが永久に+10%される。',        effect: { type: 'fameGainMult', value: 1.10 } },
-  // Tier 5: 都市合併30回で解放(周回を重ねた者だけが辿り着く最終ティア)
+  // Tier 5: 名声ポイント400到達で解放(周回を重ねた者だけが辿り着く最終ティア)
   { id: 'fame_income_5',  tier: 4, cost: 500, name: '💹 効率化都市計画 V',   desc: '全施設の収入が永久にさらに+40%される。',                   effect: { type: 'incomeMult', value: 1.40 } },
   { id: 'fame_click_3',   tier: 4, cost: 450, name: '👆 熟練の握手 III',     desc: '町役場クリックの獲得資金が永久にさらに+35%される。',       effect: { type: 'clickMult', value: 1.35 } },
   { id: 'fame_prevention_3', tier: 4, cost: 480, name: '🛡️ 医療ネットワーク強化 III', desc: '医療系施設による病気予防の効果が永久にさらに+25%される。', effect: { type: 'preventionMult', value: 1.25 } },
@@ -341,7 +414,7 @@ const FAME_SHOP = [
   { id: 'fame_gain_2',    tier: 4, cost: 700, name: '🎖️ 名声増幅回路 II',   desc: '都市合併で得られる名声ポイントが永久にさらに+15%される。',   effect: { type: 'fameGainMult', value: 1.15 } },
   { id: 'fame_autobuy_upgrades', tier: 4, cost: 350, name: '🤖 執事のアップグレード購入', desc: '執事が解放済みのアップグレードも自動で購入してくれるようになる。', effect: { type: 'autoBuyUpgrades', value: true } },
   { id: 'fame_autobuy_speed', tier: 4, cost: 400, name: '🤖 執事の増員',        desc: '自動購入の執事が増員され、購入間隔が半分(4秒→2秒)になる。',      effect: { type: 'autoBuyIntervalMult', value: 0.5 } },
-  // Tier 6: 都市合併50回で解放
+  // Tier 6: 名声ポイント800到達で解放
   { id: 'fame_income_6',  tier: 5, cost: 900,  name: '💹 効率化都市計画 VI',   desc: '全施設の収入が永久にさらに+45%される。',                   effect: { type: 'incomeMult', value: 1.45 } },
   { id: 'fame_click_4',   tier: 5, cost: 800,  name: '👆 熟練の握手 IV',       desc: '町役場クリックの獲得資金が永久にさらに+40%される。',       effect: { type: 'clickMult', value: 1.40 } },
   { id: 'fame_petition_4',tier: 5, cost: 850,  name: '😊 御用聞きの心得 IV',   desc: '陳情に応えた時の幸福度上昇が永久にさらに+30%される。',      effect: { type: 'petitionAgreeMult', value: 1.30 } },
@@ -352,7 +425,7 @@ const FAME_SHOP = [
   { id: 'fame_rain_3',    tier: 5, cost: 700,  name: '☀️ 気象予報士常駐 III',  desc: '恵みの雨イベントが永久にさらに約10%発生しやすくなる。',     effect: { type: 'rainFreqMult', value: 0.9 } },
   { id: 'fame_mission_3', tier: 5, cost: 800,  name: '🎯 ミッション報奨金 III', desc: 'デイリーミッションの報酬が永久にさらに+25%される。',       effect: { type: 'missionRewardMult', value: 1.25 } },
   { id: 'fame_gain_3',    tier: 5, cost: 1000, name: '🎖️ 名声増幅回路 III',   desc: '都市合併で得られる名声ポイントが永久にさらに+12%される。',   effect: { type: 'fameGainMult', value: 1.12 } },
-  // Tier 7: 都市合併75回で解放
+  // Tier 7: 名声ポイント1,500到達で解放
   { id: 'fame_income_7',  tier: 6, cost: 1800, name: '💹 効率化都市計画 VII',  desc: '全施設の収入が永久にさらに+50%される。',                   effect: { type: 'incomeMult', value: 1.50 } },
   { id: 'fame_click_5',   tier: 6, cost: 1600, name: '👆 熟練の握手 V',        desc: '町役場クリックの獲得資金が永久にさらに+45%される。',       effect: { type: 'clickMult', value: 1.45 } },
   { id: 'fame_ufo_3',     tier: 6, cost: 1500, name: '🛸 電波観測所 III',      desc: 'UFOが永久にさらに約30%出現しやすくなる。',                 effect: { type: 'ufoFreqMult', value: 0.7 } },
@@ -363,7 +436,7 @@ const FAME_SHOP = [
   { id: 'fame_offline_6', tier: 6, cost: 1500, name: '🌙 越境オフライン協定 VI', desc: 'オフライン収益の上限が60時間→72時間に延長される。',      effect: { type: 'offlineCapHours', value: 72 } },
   { id: 'fame_happiness_4',tier: 6, cost: 1700, name: '🌌 銀河評議会の椅子 IV', desc: '町の幸福度基準値が永久にさらに+30される。',               effect: { type: 'happinessBonusFlat', value: 30 } },
   { id: 'fame_gain_4',    tier: 6, cost: 2200, name: '🎖️ 名声増幅回路 IV',    desc: '都市合併で得られる名声ポイントが永久にさらに+15%される。',   effect: { type: 'fameGainMult', value: 1.15 } },
-  // Tier 8: 都市合併110回で解放
+  // Tier 8: 名声ポイント3,000到達で解放
   { id: 'fame_income_8',  tier: 7, cost: 3500, name: '💹 効率化都市計画 VIII', desc: '全施設の収入が永久にさらに+55%される。',                   effect: { type: 'incomeMult', value: 1.55 } },
   { id: 'fame_click_6',   tier: 7, cost: 3200, name: '👆 熟練の握手 VI',       desc: '町役場クリックの獲得資金が永久にさらに+50%される。',       effect: { type: 'clickMult', value: 1.50 } },
   { id: 'fame_petition_5',tier: 7, cost: 3300, name: '😊 御用聞きの心得 V',    desc: '陳情に応えた時の幸福度上昇が永久にさらに+35%される。',      effect: { type: 'petitionAgreeMult', value: 1.35 } },
@@ -374,7 +447,7 @@ const FAME_SHOP = [
   { id: 'fame_offline_7', tier: 7, cost: 3000, name: '🌙 越境オフライン協定 VII', desc: 'オフライン収益の上限が72時間→84時間に延長される。',     effect: { type: 'offlineCapHours', value: 84 } },
   { id: 'fame_happiness_5',tier: 7, cost: 3400, name: '🌌 銀河評議会の椅子 V', desc: '町の幸福度基準値が永久にさらに+35される。',               effect: { type: 'happinessBonusFlat', value: 35 } },
   { id: 'fame_gain_5',    tier: 7, cost: 4200, name: '🎖️ 名声増幅回路 V',     desc: '都市合併で得られる名声ポイントが永久にさらに+18%される。',   effect: { type: 'fameGainMult', value: 1.18 } },
-  // Tier 9: 都市合併160回で解放
+  // Tier 9: 名声ポイント6,000到達で解放
   { id: 'fame_income_9',  tier: 8, cost: 7000, name: '💹 効率化都市計画 IX',   desc: '全施設の収入が永久にさらに+60%される。',                   effect: { type: 'incomeMult', value: 1.60 } },
   { id: 'fame_click_7',   tier: 8, cost: 6500, name: '👆 熟練の握手 VII',      desc: '町役場クリックの獲得資金が永久にさらに+55%される。',       effect: { type: 'clickMult', value: 1.55 } },
   { id: 'fame_ufo_4',     tier: 8, cost: 6000, name: '🛸 電波観測所 IV',       desc: 'UFOが永久にさらに約35%出現しやすくなる。',                 effect: { type: 'ufoFreqMult', value: 0.65 } },
@@ -385,7 +458,7 @@ const FAME_SHOP = [
   { id: 'fame_offline_8', tier: 8, cost: 6000, name: '🌙 越境オフライン協定 VIII', desc: 'オフライン収益の上限が84時間→96時間に延長される。',     effect: { type: 'offlineCapHours', value: 96 } },
   { id: 'fame_happiness_6',tier: 8, cost: 7000, name: '🌌 銀河評議会の椅子 VI', desc: '町の幸福度基準値が永久にさらに+40される。',               effect: { type: 'happinessBonusFlat', value: 40 } },
   { id: 'fame_gain_6',    tier: 8, cost: 9000, name: '🎖️ 名声増幅回路 VI',     desc: '都市合併で得られる名声ポイントが永久にさらに+20%される。',   effect: { type: 'fameGainMult', value: 1.20 } },
-  // Tier 10: 都市合併230回で解放
+  // Tier 10: 名声ポイント12,000到達で解放
   { id: 'fame_income_10', tier: 9, cost: 15000, name: '💹 効率化都市計画 X',   desc: '全施設の収入が永久にさらに+65%される。',                   effect: { type: 'incomeMult', value: 1.65 } },
   { id: 'fame_click_8',   tier: 9, cost: 14000, name: '👆 熟練の握手 VIII',    desc: '町役場クリックの獲得資金が永久にさらに+60%される。',       effect: { type: 'clickMult', value: 1.60 } },
   { id: 'fame_petition_6',tier: 9, cost: 14000, name: '😊 御用聞きの心得 VI',  desc: '陳情に応えた時の幸福度上昇が永久にさらに+40%される。',      effect: { type: 'petitionAgreeMult', value: 1.40 } },
@@ -396,7 +469,7 @@ const FAME_SHOP = [
   { id: 'fame_offline_9', tier: 9, cost: 13000, name: '🌙 越境オフライン協定 IX', desc: 'オフライン収益の上限が96時間→108時間に延長される。',     effect: { type: 'offlineCapHours', value: 108 } },
   { id: 'fame_happiness_7',tier: 9, cost: 15000, name: '🌌 銀河評議会の椅子 VII', desc: '町の幸福度基準値が永久にさらに+50される。',             effect: { type: 'happinessBonusFlat', value: 50 } },
   { id: 'fame_gain_7',    tier: 9, cost: 19000, name: '🎖️ 名声増幅回路 VII',   desc: '都市合併で得られる名声ポイントが永久にさらに+22%される。',   effect: { type: 'fameGainMult', value: 1.22 } },
-  // Tier 11: 都市合併320回で解放(周回の果てに辿り着く真の最終ティア)
+  // Tier 11: 名声ポイント25,000到達で解放(周回の果てに辿り着く真の最終ティア)
   { id: 'fame_income_11', tier: 10, cost: 30000, name: '💹 効率化都市計画 XI', desc: '全施設の収入が永久にさらに+70%される。',                   effect: { type: 'incomeMult', value: 1.70 } },
   { id: 'fame_click_9',   tier: 10, cost: 28000, name: '👆 熟練の握手 IX',     desc: '町役場クリックの獲得資金が永久にさらに+65%される。',       effect: { type: 'clickMult', value: 1.65 } },
   { id: 'fame_ufo_5',     tier: 10, cost: 26000, name: '🛸 電波観測所 V',      desc: 'UFOが永久にさらに約40%出現しやすくなる。',                 effect: { type: 'ufoFreqMult', value: 0.6 } },
@@ -409,9 +482,47 @@ const FAME_SHOP = [
   { id: 'fame_gain_8',    tier: 10, cost: 40000, name: '🎖️ 名声増幅回路 VIII', desc: '都市合併で得られる名声ポイントが永久にさらに+25%される。',   effect: { type: 'fameGainMult', value: 1.25 } },
   { id: 'fame_autobuy_speed_2', tier: 10, cost: 25000, name: '🤖 執事の大増員', desc: '自動購入の執事がさらに増員され、購入間隔が半分(2秒→1秒)になる。', effect: { type: 'autoBuyIntervalMult', value: 0.5 } }
 ];
-function fameShopTierUnlocked(tier, prestigeCount) {
-  return prestigeCount >= FAME_SHOP_TIER_REQUIREMENT[tier];
+function fameShopTierUnlocked(tier, famePoints) {
+  return famePoints >= FAME_SHOP_TIER_REQUIREMENT[tier];
 }
+
+// --- 次元融合(第2のプレステージ層): 都市合併をさらに周回した末に解放される、恒久を超えた「恒久」層。 ---
+// 累計獲得資金(lifetimeMoneyは都市合併でも消えない)を元手に「次元結晶」を得て、その場で都市合併の
+// 現在の周(資金・施設・名声ポイント・未購入の名声ショップ進捗)を再構築する代わりに、名声ショップの
+// 効果とは別枠でずっと乗り続ける強力な恒久強化を購入できるようになる。
+// effectの型はFAME_SHOPと共通(fameOwnedItems()で合算される)なので、消費側のコードは触らなくてよい。
+const DIMENSION_FUSION_DIVISOR = 1e30; // この額のlifetimeMoneyごとに次元結晶1個分の実力を得る目安(立方根で緩やかに増える)
+const DIMENSION_SHOP = [
+  { id: 'dim_income_1',  cost: 3,  name: '💠 次元経済学 I',   desc: '全施設の収入が永久に2倍になる。名声ショップの効果とは別に乗算される。', effect: { type: 'incomeMult', value: 2.0 } },
+  { id: 'dim_income_2',  cost: 8,  name: '💠 次元経済学 II',  desc: '全施設の収入が永久にさらに2倍になる。', effect: { type: 'incomeMult', value: 2.0 } },
+  { id: 'dim_click_1',   cost: 4,  name: '💠 次元の一撃',     desc: '町役場クリックの獲得資金が永久に2.5倍になる。', effect: { type: 'clickMult', value: 2.5 } },
+  { id: 'dim_prestige_th',cost: 6, name: '💠 次元の加護',     desc: '都市合併に必要な累計資金がずっと半分になる。', effect: { type: 'prestigeThresholdMult', value: 0.5 } },
+  { id: 'dim_fame_gain',  cost: 5, name: '💠 次元の共鳴',     desc: '都市合併で得られる名声ポイントが永久に+50%される。', effect: { type: 'fameGainMult', value: 1.5 } },
+  { id: 'dim_offline',    cost: 9, name: '💠 次元の静寂',     desc: 'オフライン収益の上限が事実上無制限になる。', effect: { type: 'offlineCapHours', value: 999999 } },
+  { id: 'dim_happiness',  cost: 7, name: '💠 次元の幸福',     desc: '町の幸福度基準値が永久に+100される。', effect: { type: 'happinessBonusFlat', value: 100 } },
+  { id: 'dim_prevention', cost: 5, name: '💠 次元の守護',     desc: '病気・火事・空き巣・陳情の予防効果が永久に2倍になる。', effect: { type: 'preventionMult', value: 2.0 } },
+  { id: 'dim_mission',    cost: 5, name: '💠 次元の使命',     desc: 'デイリーミッション・恒久ミッションの報酬が永久に2倍になる。', effect: { type: 'missionRewardMult', value: 2.0 } },
+  { id: 'dim_golden',     cost: 6, name: '💠 次元の黄金',     desc: 'ゴールデンビルが永久に約2倍出現しやすくなる。', effect: { type: 'goldenFreqMult', value: 0.5 } },
+  { id: 'dim_ufo',        cost: 6, name: '💠 次元の来訪者',   desc: 'UFOが永久に約2倍出現しやすくなる。', effect: { type: 'ufoFreqMult', value: 0.5 } },
+  { id: 'dim_rain',       cost: 6, name: '💠 次元の恵み',     desc: '恵みの雨イベントが永久に約2倍発生しやすくなる。', effect: { type: 'rainFreqMult', value: 0.5 } },
+  { id: 'dim_petition',   cost: 6, name: '💠 次元の対話',     desc: '陳情に応えた時の幸福度上昇が永久に2倍になる。', effect: { type: 'petitionAgreeMult', value: 2.0 } },
+  { id: 'dim_autobuy',    cost: 8, name: '💠 次元の執事',     desc: '自動購入の執事の購入間隔が永久に半分になる。', effect: { type: 'autoBuyIntervalMult', value: 0.5 } }
+];
+const DIMENSION_SHOP_BY_ID = new Map(DIMENSION_SHOP.map((d) => [d.id, d]));
+
+// --- レリックショップ: 全実績・全名声ショップを完全制覇した者だけに解放される、真の最終コンテンツ。 ---
+// 通貨は次元結晶を流用するが、解放条件そのものが「完全制覇」なので事実上ここに辿り着くだけでも一仕事になる。
+const RELIC_SHOP = [
+  { id: 'relic_income',    cost: 50, name: '🏺 万物の秘宝',   desc: '全施設の収入が永久にさらに3倍になる。', effect: { type: 'incomeMult', value: 3.0 } },
+  { id: 'relic_click',     cost: 30, name: '🏺 神の一撃',     desc: '町役場クリックの獲得資金が永久にさらに5倍になる。', effect: { type: 'clickMult', value: 5.0 } },
+  { id: 'relic_prestige',  cost: 60, name: '🏺 悠久の理',     desc: '都市合併に必要な累計資金がずっとさらに半分になる。', effect: { type: 'prestigeThresholdMult', value: 0.5 } },
+  { id: 'relic_happiness', cost: 40, name: '🏺 永遠の幸福',   desc: '町の幸福度基準値が永久にさらに+500される。', effect: { type: 'happinessBonusFlat', value: 500 } },
+  { id: 'relic_prevention',cost: 40, name: '🏺 絶対の守護',   desc: '病気・火事・空き巣・陳情・概念崩壊の予防効果が永久にさらに3倍になる。', effect: { type: 'preventionMult', value: 3.0 } },
+  { id: 'relic_fame_gain', cost: 50, name: '🏺 名声の秘宝',   desc: '都市合併で得られる名声ポイントが永久にさらに2倍になる。', effect: { type: 'fameGainMult', value: 2.0 } },
+  { id: 'relic_mission',   cost: 35, name: '🏺 使命の証',     desc: 'デイリーミッション・恒久ミッションの報酬が永久にさらに3倍になる。', effect: { type: 'missionRewardMult', value: 3.0 } },
+  { id: 'relic_golden',    cost: 35, name: '🏺 黄金の秘宝',   desc: 'ゴールデンビルが永久にさらに約2倍出現しやすくなる。', effect: { type: 'goldenFreqMult', value: 0.5 } }
+];
+const RELIC_SHOP_BY_ID = new Map(RELIC_SHOP.map((r) => [r.id, r]));
 
 // デイリーミッションの候補プール。tierで報酬倍率が変わる
 const MISSION_POOL = [
@@ -490,7 +601,7 @@ const QUESTS = [
   { id: 'm5_settings', stage: 5, icon: '⚙️', name: '設定を開いてみよう', desc: 'フッターの「設定」を開く', check: (s) => !!(s.uiFlags && s.uiFlags.opened_settings) },
   // Stage 6: 名声への道
   { id: 'm6_money1e10', stage: 6, icon: '💰', name: '累計100億円稼ごう', desc: '累計獲得資金が100億円に到達する', check: (s) => s.lifetimeMoney >= 10000000000 },
-  { id: 'm6_prestige15', stage: 6, icon: '🌟', name: '都市合併を15回行おう', desc: '都市合併の累計回数が15回に到達する(名声ショップTier4解放)', check: (s) => (s.prestigeCount || 0) >= 15 },
+  { id: 'm6_prestige15', stage: 6, icon: '🌟', name: '名声ポイントを150貯めよう', desc: '名声ポイントが150に到達する(名声ショップTier4解放)', check: (s) => (s.famePoints || 0) >= 150 },
   { id: 'm6_fameshop10', stage: 6, icon: '💎', name: '名声ショップを10個購入しよう', desc: '名声ショップのアップグレードを合計10個購入する', check: (s) => (s.fameShopUpgrades || []).length >= 10 },
   { id: 'm6_buildings2000', stage: 6, icon: '🏘️', name: '施設を合計2,000個所有しよう', desc: '種類を問わず施設を合計2,000個所有する', check: (s) => totalBuildingsOwned(s) >= 2000 },
   { id: 'm6_expansion_all', stage: 6, icon: '🏘️', name: '町の拡張を全て行おう', desc: '町の拡張(全22段階)をコンプリートする', check: (s) => (s.townExpansions || []).length >= TOWN_EXPANSIONS.length },
@@ -499,7 +610,7 @@ const QUESTS = [
   { id: 'm6_types90', stage: 6, icon: '🏪', name: '90種類の施設を所有しよう', desc: '異なる施設を90種類以上所有する', check: (s) => distinctBuildingsOwned(s) >= 90 },
   // Stage 7: 銀河評議会
   { id: 'm7_money1e14', stage: 7, icon: '💰', name: '累計100兆円稼ごう', desc: '累計獲得資金が100兆円に到達する', check: (s) => s.lifetimeMoney >= 100000000000000 },
-  { id: 'm7_prestige30', stage: 7, icon: '🌟', name: '都市合併を30回行おう', desc: '都市合併の累計回数が30回に到達する(名声ショップTier5解放)', check: (s) => (s.prestigeCount || 0) >= 30 },
+  { id: 'm7_prestige30', stage: 7, icon: '🌟', name: '名声ポイントを400貯めよう', desc: '名声ポイントが400に到達する(名声ショップTier5解放)', check: (s) => (s.famePoints || 0) >= 400 },
   { id: 'm7_types_all', stage: 7, icon: '🏪', name: '全ての施設を所有しよう', desc: `全${BUILDINGS.length}種類の施設をコンプリートする`, check: (s) => distinctBuildingsOwned(s) >= BUILDINGS.length },
   { id: 'm7_ach200', stage: 7, icon: '🏆', name: '実績を200個達成しよう', desc: '実績の達成数が200個に到達する', check: (s) => (s.achievements || []).length >= 200 },
   { id: 'm7_buildings10000', stage: 7, icon: '🏘️', name: '施設を合計10,000個所有しよう', desc: '種類を問わず施設を合計10,000個所有する', check: (s) => totalBuildingsOwned(s) >= 10000 },
@@ -509,7 +620,7 @@ const QUESTS = [
   // Stage 8: 第二部の入口
   { id: 'm8_dream', stage: 8, icon: '🌙', name: '「夢想収集庁」を建てよう', desc: '第二部最初の施設を1つ所有する', check: (s) => (s.buildings.dream_archive || 0) >= 1 },
   { id: 'm8_money1e20', stage: 8, icon: '💰', name: '累計1垓円を突破しよう', desc: '累計獲得資金が1垓円(10^20)に到達する', check: (s) => s.lifetimeMoney >= 1e20 },
-  { id: 'm8_prestige50', stage: 8, icon: '🌟', name: '都市合併を50回行おう', desc: '都市合併の累計回数が50回に到達する(名声ショップTier6解放)', check: (s) => (s.prestigeCount || 0) >= 50 },
+  { id: 'm8_prestige50', stage: 8, icon: '🌟', name: '名声ポイントを800貯めよう', desc: '名声ポイントが800に到達する(名声ショップTier6解放)', check: (s) => (s.famePoints || 0) >= 800 },
   { id: 'm8_fameshop40', stage: 8, icon: '💎', name: '名声ショップを40個購入しよう', desc: '名声ショップのアップグレードを合計40個購入する', check: (s) => (s.fameShopUpgrades || []).length >= 40 },
   { id: 'm8_balanced50', stage: 8, icon: '🌈', name: '全ての施設を50個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 50) },
   { id: 'm8_ach500', stage: 8, icon: '🏆', name: '実績を500個達成しよう', desc: '実績の達成数が500個に到達する', check: (s) => (s.achievements || []).length >= 500 },
@@ -518,7 +629,7 @@ const QUESTS = [
   // Stage 9: 無限への挑戦
   { id: 'm9_next_universe', stage: 9, icon: '🌌', name: '「次なる宇宙の種」を建てよう', desc: '現時点で最も新しい施設を1つ所有する', check: (s) => (s.buildings.next_universe_seed || 0) >= 1 },
   { id: 'm9_money1e28', stage: 9, icon: '💰', name: '累計1穣円を突破しよう', desc: '累計獲得資金が1穣円(10^28)に到達する', check: (s) => s.lifetimeMoney >= 1e28 },
-  { id: 'm9_prestige110', stage: 9, icon: '🌟', name: '都市合併を110回行おう', desc: '都市合併の累計回数が110回に到達する(名声ショップTier8解放)', check: (s) => (s.prestigeCount || 0) >= 110 },
+  { id: 'm9_prestige110', stage: 9, icon: '🌟', name: '名声ポイントを3,000貯めよう', desc: '名声ポイントが3,000に到達する(名声ショップTier8解放)', check: (s) => (s.famePoints || 0) >= 3000 },
   { id: 'm9_balanced200', stage: 9, icon: '🌟', name: '全ての施設を200個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 200) },
   { id: 'm9_ach1000', stage: 9, icon: '🏆', name: '実績を1,000個達成しよう', desc: '実績の達成数が1,000個に到達する', check: (s) => (s.achievements || []).length >= 1000 },
   { id: 'm9_fameshop70', stage: 9, icon: '💎', name: '名声ショップを70個購入しよう', desc: '名声ショップのアップグレードを合計70個購入する', check: (s) => (s.fameShopUpgrades || []).length >= 70 },
@@ -526,8 +637,8 @@ const QUESTS = [
   { id: 'm9_happycap1000', stage: 9, icon: '😊', name: '幸福度の上限を1,000%まで引き上げよう', desc: '幸福度政策を重ねて上限を引き上げる', check: (s) => happinessCapFromState(s) >= 1000 },
   // Stage 10: 究極完全都市(最終段階)
   { id: 'm10_balanced1000', stage: 10, icon: '👑', name: '全ての施設を1,000個以上ずつ所有しよう', desc: '真の完全制覇へ向けて、全施設を極限まで育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 1000) },
-  { id: 'm10_prestige230', stage: 10, icon: '🌟', name: '都市合併を230回行おう', desc: '都市合併の累計回数が230回に到達する(名声ショップTier10解放)', check: (s) => (s.prestigeCount || 0) >= 230 },
-  { id: 'm10_prestige320', stage: 10, icon: '🌟', name: '都市合併を320回行おう', desc: '都市合併の累計回数が320回に到達する(名声ショップ最終Tier解放)', check: (s) => (s.prestigeCount || 0) >= 320 },
+  { id: 'm10_prestige230', stage: 10, icon: '🌟', name: '名声ポイントを12,000貯めよう', desc: '名声ポイントが12,000に到達する(名声ショップTier10解放)', check: (s) => (s.famePoints || 0) >= 12000 },
+  { id: 'm10_prestige320', stage: 10, icon: '🌟', name: '名声ポイントを25,000貯めよう', desc: '名声ポイントが25,000に到達する(名声ショップ最終Tier解放)', check: (s) => (s.famePoints || 0) >= 25000 },
   { id: 'm10_fameshop_all', stage: 10, icon: '💎', name: '名声ショップを全て購入しよう', desc: `名声ショップの全${FAME_SHOP.length}アイテムをコンプリートする`, check: (s) => (s.fameShopUpgrades || []).length >= FAME_SHOP.length },
   { id: 'm10_ach_all', stage: 10, icon: '🏆', name: '実績を全て達成しよう', desc: '実績を1つ残らず全て達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length },
   { id: 'm10_next_universe10', stage: 10, icon: '🌌', name: '「次なる宇宙の種」を10個所有しよう', desc: '真の完全制覇へ、最新施設をさらに育てる', check: (s) => (s.buildings.next_universe_seed || 0) >= 10 },
