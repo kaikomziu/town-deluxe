@@ -671,14 +671,26 @@ const Game = (() => {
     const y = GROUND_Y_MIN + Math.random() * (GROUND_Y_MAX - GROUND_Y_MIN);
     return sanitizeLayoutPosition(x, y);
   }
+  // 施設タイプごとのレイアウト件数キャッシュ。「全部買う」で施設種類を大量に購入すると
+  // state.layout(最大 施設数×24件)を毎回フルスキャンする箇所になり得るため、O(1)ルックアップにしておく。
+  let layoutTypeCounts = null;
+  function invalidateLayoutTypeCounts() { layoutTypeCounts = null; }
+  function ensureLayoutTypeCounts() {
+    if (layoutTypeCounts) return layoutTypeCounts;
+    layoutTypeCounts = {};
+    state.layout.forEach((e) => { layoutTypeCounts[e.type] = (layoutTypeCounts[e.type] || 0) + 1; });
+    return layoutTypeCounts;
+  }
   function addLayoutEntries(buildingId, qty) {
-    const existing = state.layout.filter((e) => e.type === buildingId).length;
+    const counts = ensureLayoutTypeCounts();
+    const existing = counts[buildingId] || 0;
     const toAdd = Math.max(0, Math.min(qty, MAX_LAYOUT_PER_BUILDING - existing));
     for (let i = 0; i < toAdd; i++) {
       const idx = state.layout.length;
       const pos = defaultLayoutPosition();
       state.layout.push({ id: `b${idx}_${buildingId}_${Date.now().toString(36)}${i}`, type: buildingId, x: pos.x, y: pos.y });
     }
+    counts[buildingId] = existing + toAdd;
   }
 
   // --- 市長ランク(称号) ---
@@ -982,6 +994,7 @@ const Game = (() => {
     state.upgrades = [];
     state.layout = [];
     invalidateUpgradeCaches();
+    invalidateLayoutTypeCounts();
     recomputeStats();
     Effects.sound('prestige');
     emit('prestige', { gained });
@@ -1031,6 +1044,7 @@ const Game = (() => {
     invalidateFameCache();
     invalidateMaxPopulationCache();
     invalidateMaxHappinessCache();
+    invalidateLayoutTypeCounts();
     recomputeStats();
   }
 

@@ -112,6 +112,8 @@ const UI = (() => {
         const kinds = result.bought.length;
         Effects.toast(`🛒 ${kinds}種類・計${formatNum(result.totalQty)}個購入(${formatNum(result.totalCost)}円)`, '🛒');
         renderBuild();
+        renderUpgrades();
+        renderBuildingsLayer();
         updateTopbar();
       } else {
         // 何も買えなかった場合も無反応に見えないよう明示する(一番安い施設の価格を案内)
@@ -512,6 +514,7 @@ const UI = (() => {
       const result = Game.buyAllUpgrades(upgradeOrder);
       if (result.bought.length > 0) {
         if (Game.getShowBuyToasts()) Effects.toast(`⚡ アップグレードを${result.bought.length}件購入(${formatNum(result.totalCost)}円)`, '⚡');
+        renderBuild();
         renderUpgrades();
         updateTopbar();
       } else {
@@ -1109,7 +1112,11 @@ const UI = (() => {
     updateTopbar();
   }
 
-  function onBuy() {
+  function onBuy(data) {
+    // 「全部買う」等の一括購入はsilent:trueで1件ずつbuyBuilding/buyUpgradeを呼ぶため、
+    // ここで毎回フル再描画すると(施設130種類×アップグレード1500件超を)購入数だけ繰り返すことになり
+    // 極めて重くなる。silent時は描画をスキップし、呼び出し元(bindBuyAll等)が最後に1回だけ描画する。
+    if (data && data.silent) return;
     renderBuild();
     renderUpgrades();
     renderBuildingsLayer();
