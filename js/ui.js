@@ -23,8 +23,7 @@ const UI = (() => {
     bindFooter();
     bindBgm();
     bindBgmPreviewEnd();
-    bindPedestrianToggle();
-    bindBuyToastToggle();
+    bindSettingsButton();
     renderSky();
     renderClouds();
     renderSeason();
@@ -931,20 +930,42 @@ const UI = (() => {
   function renderPedestrianVisibility() {
     const on = Game.getShowPedestrians();
     $('pedestrian-layer').classList.toggle('hidden', !on);
-    $('pedestrian-toggle').checked = on;
   }
-  function bindPedestrianToggle() {
-    $('pedestrian-toggle').addEventListener('change', () => {
+
+  // --- 設定モーダル: 演出まわりのオンオフをここに集約(重く感じたら切れるように) ---
+  function bindSettingsButton() {
+    $('settings-btn').addEventListener('click', showSettingsModal);
+  }
+  function showSettingsModal() {
+    const modal = $('changelog-modal');
+    const rows = [
+      { id: 'set-pedestrian', label: '🚶 住民表示', desc: '街を歩く住民・犬・猫の表示', on: Game.getShowPedestrians() },
+      { id: 'set-buy-toast', label: '🔔 購入通知', desc: 'アップグレード・拡張購入時の「〜を取得!」通知', on: Game.getShowBuyToasts() },
+      { id: 'set-effects', label: '🎉 演出(紙吹雪・花火)', desc: 'クリックや実績解除などの紙吹雪・花火・浮き出る数字', on: Game.getShowEffects() },
+      { id: 'set-shake', label: '📳 画面シェイク', desc: 'ゴールデンビルや火事などで画面が揺れる演出', on: Game.getShowScreenShake() }
+    ];
+    modal.innerHTML = `
+      <div class="modal-box">
+        <h2>⚙️ 設定</h2>
+        <p class="card-desc">演出が重く感じる場合は、ここでオフにできます。</p>
+        <div class="settings-list">
+          ${rows.map((r) => `
+            <label class="settings-row">
+              <input type="checkbox" id="${r.id}"${r.on ? ' checked' : ''}>
+              <span class="settings-row-text"><b>${r.label}</b><span class="card-desc">${r.desc}</span></span>
+            </label>`).join('')}
+        </div>
+        <div class="modal-actions"><button id="settings-close">閉じる</button></div>
+      </div>`;
+    modal.classList.remove('hidden');
+    $('set-pedestrian').addEventListener('change', () => {
       Game.togglePedestrians();
       renderPedestrianVisibility();
     });
-  }
-
-  function bindBuyToastToggle() {
-    $('buy-toast-toggle').checked = Game.getShowBuyToasts();
-    $('buy-toast-toggle').addEventListener('change', () => {
-      Game.toggleBuyToasts();
-    });
+    $('set-buy-toast').addEventListener('change', () => Game.toggleBuyToasts());
+    $('set-effects').addEventListener('change', () => Game.toggleEffects());
+    $('set-shake').addEventListener('change', () => Game.toggleScreenShake());
+    $('settings-close').addEventListener('click', () => modal.classList.add('hidden'));
   }
 
   // --- ゲームイベント反応 ---

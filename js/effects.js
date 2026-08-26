@@ -3,6 +3,11 @@
 const Effects = (() => {
   let canvas, ctx, particles = [];
   let dpr = Math.min(window.devicePixelRatio || 1, 2);
+  // 演出が重いと感じるユーザー向けに設定でオフにできるフラグ(音のmutedと同じ形)
+  let particlesEnabled = true;
+  let shakeEnabled = true;
+  function setParticlesEnabled(v) { particlesEnabled = v; if (!v) particles = []; }
+  function setShakeEnabled(v) { shakeEnabled = v; }
 
   function init() {
     canvas = document.getElementById('fx-canvas');
@@ -54,6 +59,7 @@ const Effects = (() => {
   }
 
   function confetti(x, y, count = 40) {
+    if (!particlesEnabled) return;
     const colors = ['#ff6b6b', '#ffd93d', '#6bcB77', '#4d96ff', '#c780fa', '#ff9f43'];
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -70,6 +76,7 @@ const Effects = (() => {
   }
 
   function fireworks(x, y) {
+    if (!particlesEnabled) return;
     const colors = ['#ff6b6b', '#ffd93d', '#6bcB77', '#4d96ff', '#c780fa', '#ff9f43', '#ffffff'];
     const color = colors[Math.floor(Math.random() * colors.length)];
     for (let i = 0; i < 60; i++) {
@@ -97,6 +104,7 @@ const Effects = (() => {
   }
 
   function floatText(x, y, text, color = '#ffd93d', size = 22) {
+    if (!particlesEnabled) return;
     particles.push({
       type: 'text', x, y, text, color, size,
       vx: (Math.random() - 0.5) * 1, vy: -1.8,
@@ -105,6 +113,7 @@ const Effects = (() => {
   }
 
   function screenShake(amount = 8, duration = 300) {
+    if (!shakeEnabled) return;
     const el = document.getElementById('app');
     const start = performance.now();
     function shake(t) {
@@ -172,5 +181,5 @@ const Effects = (() => {
     osc.stop(now + dur + 0.02);
   }
 
-  return { init, confetti, fireworks, fireworksShow, floatText, screenShake, toast, sound, setMuted };
+  return { init, confetti, fireworks, fireworksShow, floatText, screenShake, toast, sound, setMuted, setParticlesEnabled, setShakeEnabled };
 })();

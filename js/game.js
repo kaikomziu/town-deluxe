@@ -25,6 +25,8 @@ const Game = (() => {
   function init() {
     state = loadGame() || defaultState();
     Effects.setMuted(!!state.muted);
+    Effects.setParticlesEnabled(state.showEffects !== false);
+    Effects.setShakeEnabled(state.showScreenShake !== false);
     sanitizeLayout();
     checkDailyReset();
     lastRankIndex = rankIndexFor(state.lifetimeMoney); // 起動直後は称号アップ演出を出さない
@@ -773,6 +775,20 @@ const Game = (() => {
   }
   function getShowBuyToasts() { return state.showBuyToasts !== false; } // 未設定(旧セーブ)はON扱い
 
+  // 演出(紙吹雪・花火・浮き出る数字)と画面シェイク。重く感じる場合に設定でオフにできる
+  function toggleEffects() {
+    state.showEffects = !state.showEffects;
+    Effects.setParticlesEnabled(state.showEffects);
+    return state.showEffects;
+  }
+  function getShowEffects() { return state.showEffects !== false; }
+  function toggleScreenShake() {
+    state.showScreenShake = !state.showScreenShake;
+    Effects.setShakeEnabled(state.showScreenShake);
+    return state.showScreenShake;
+  }
+  function getShowScreenShake() { return state.showScreenShake !== false; }
+
   // --- 実績 ---
   // 実績が数百件規模になったため、毎回ACHIEVEMENTS.length分 state.achievements.includes()
   // (これもO(n))を回すと二重ループで重くなる。所持済みIDをSetにキャッシュしO(1)判定にする。
@@ -982,6 +998,7 @@ const Game = (() => {
     getDaily: () => state.daily, claimMission,
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,
     getShowBuyToasts, toggleBuyToasts,
+    getShowEffects, toggleEffects, getShowScreenShake, toggleScreenShake,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
     fameAvailable, isFameShopTierUnlocked, isFameUpgradeOwned, buyFameUpgrade,
     maxPopulation, isTownExpansionOwned, buyTownExpansion,
