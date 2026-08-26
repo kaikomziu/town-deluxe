@@ -38,6 +38,11 @@ function defaultState() {
     fameSpent: 0,
     fameShopUpgrades: [],
     prestigeCount: 0,
+    dimensionShards: 0,
+    dimensionSpent: 0,
+    dimensionShopUpgrades: [],
+    dimensionFusionCount: 0,
+    relicShopUpgrades: [],
     totalClicks: 0,
     goldenClicks: 0,
     ufoClicks: 0,
@@ -56,7 +61,8 @@ function defaultState() {
     sicknessCured: 0,
     sicknessPrevented: 0,
     hazards: {
-      fire: { until: 0, severity: 0, name: '', icon: '🔥', survived: 0, cured: 0, prevented: 0 }
+      fire: { until: 0, severity: 0, name: '', icon: '🔥', survived: 0, cured: 0, prevented: 0 },
+      collapse: { until: 0, severity: 0, name: '', icon: '🌀', survived: 0, cured: 0, prevented: 0 }
     },
     crimePrevented: 0,
     crimeOccurred: 0,
@@ -74,6 +80,9 @@ function defaultState() {
     buildingDisplayMode: 'all', // 'all' | 'dedupe'(施設1種類につき1つだけ表示) | 'none'(完全非表示)
     hiddenBuildingIds: [], // 街並みに表示しない施設idの一覧(設定で個別に選択)
     uiFlags: {}, // 「〜タブを開いた」等、初回操作をチュートリアルミッションの条件として記録するフラグ集
+    autoClaimQuests: false, // 実績200個で解放される自動化ご褒美
+    autoPrestige: false,    // 実績500個で解放される自動化ご褒美
+    autoDimensionFusion: false, // 実績1000個で解放される自動化ご褒美
     questsClaimed: [], // 恒久ミッション(QUESTS)のうち受け取り済みのid一覧
     districtBonusEverActive: false,
     seasonalComplaintsResolved: [],
@@ -93,7 +102,7 @@ function defaultState() {
 // 種類数に応じて際限なく大きくなりうるフィールド。ここに載っているものはCookieに入れず、
 // LISTS_KEY(localStorage)側に保存する。新しく「〜のリスト」「〜ごとの状態を持つオブジェクト」
 // を追加するときは、ここに足すことを忘れないこと。
-const GROWING_FIELDS = ['achievements', 'upgrades', 'layout', 'fameShopUpgrades', 'buildings', 'bgmUnlocked', 'seasonalComplaintsResolved', 'daily', 'townExpansions', 'happinessExpansions', 'hiddenBuildingIds', 'questsClaimed'];
+const GROWING_FIELDS = ['achievements', 'upgrades', 'layout', 'fameShopUpgrades', 'buildings', 'bgmUnlocked', 'seasonalComplaintsResolved', 'daily', 'townExpansions', 'happinessExpansions', 'hiddenBuildingIds', 'questsClaimed', 'dimensionShopUpgrades', 'relicShopUpgrades'];
 
 function saveGame(state) {
   state.lastSave = Date.now();

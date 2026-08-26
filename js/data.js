@@ -970,6 +970,26 @@ const ACHIEVEMENTS = generateAchievements();
 const UPGRADES_BY_ID = new Map(UPGRADES.map((u) => [u.id, u]));
 const FAME_SHOP_BY_ID = new Map(FAME_SHOP.map((f) => [f.id, f]));
 
+// 町の装飾コレクション: 実績の達成数に応じて自動的に街へ現れる、経済効果のない見た目だけの飾り。
+// 「所持」の概念がなく実績数だけで判定するため、専用の状態は持たない(購入・claim不要)。
+const DECORATIONS = [
+  { id: 'deco_fountain',        name: '噴水',           emoji: '⛲', need: 5,    desc: '実績5個達成で街に噴水が現れる。' },
+  { id: 'deco_statue',          name: '銅像',           emoji: '🗿', need: 20,   desc: '実績20個達成で街に銅像が現れる。' },
+  { id: 'deco_clocktower',      name: '時計台',         emoji: '🕰️', need: 50,   desc: '実績50個達成で街に時計台が現れる。' },
+  { id: 'deco_torii',           name: '鳥居',           emoji: '⛩️', need: 100,  desc: '実績100個達成で街に鳥居が現れる。' },
+  { id: 'deco_carousel',        name: 'メリーゴーランド', emoji: '🎠', need: 200,  desc: '実績200個達成で街にメリーゴーランドが現れる。' },
+  { id: 'deco_lantern',         name: '提灯通り',       emoji: '🏮', need: 300,  desc: '実績300個達成で街に提灯が灯る。' },
+  { id: 'deco_bridge',          name: 'ライトアップ橋', emoji: '🌉', need: 400,  desc: '実績400個達成で街に橋が架かる。' },
+  { id: 'deco_mural',           name: '壁画',           emoji: '🎨', need: 500,  desc: '実績500個達成で街に壁画が描かれる。' },
+  { id: 'deco_circus',          name: 'サーカステント', emoji: '🎪', need: 600,  desc: '実績600個達成で街にサーカステントが現れる。' },
+  { id: 'deco_shrine',          name: '神殿',           emoji: '🛕', need: 700,  desc: '実績700個達成で街に神殿が現れる。' },
+  { id: 'deco_rainbow',         name: '虹のオブジェ',   emoji: '🌈', need: 800,  desc: '実績800個達成で街に虹のオブジェが現れる。' },
+  { id: 'deco_fireworks_deck',  name: '花火台',         emoji: '🎇', need: 900,  desc: '実績900個達成で街に花火台が現れる。' },
+  { id: 'deco_crown',           name: '王冠モニュメント', emoji: '👑', need: 1000, desc: '実績1,000個達成で街に王冠モニュメントが現れる。' },
+  { id: 'deco_starmap',         name: '星図モニュメント', emoji: '🌌', need: 1150, desc: '実績1,150個達成で街に星図モニュメントが現れる。' },
+  { id: 'deco_infinity',        name: '無限記念碑',     emoji: '♾️', need: ACHIEVEMENTS.length, desc: '全実績達成で街に無限記念碑が現れる。町の完全制覇の証。' }
+];
+
 function formatNum(n) {
   n = Math.floor(n * 100) / 100;
   if (n < 0) return '-' + formatNum(-n);

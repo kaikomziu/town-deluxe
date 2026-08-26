@@ -20,6 +20,7 @@ const UI = (() => {
     bindPetition();
     bindSickness();
     bindFire();
+    bindCollapse();
     bindFooter();
     bindBgm();
     bindBgmPreviewEnd();
@@ -41,6 +42,10 @@ const UI = (() => {
     if (Game.isFireActive()) {
       const s = Game.getState();
       showFireBanner({ icon: s.hazards.fire.icon, name: s.hazards.fire.name });
+    }
+    if (Game.isCollapseActive()) {
+      const s = Game.getState();
+      showCollapseBanner({ icon: s.hazards.collapse.icon, name: s.hazards.collapse.name });
     }
     setInterval(renderSky, 5000);
     setInterval(renderSeason, 60000);
@@ -230,6 +235,17 @@ const UI = (() => {
     });
   }
 
+  function bindCollapse() {
+    $('collapse-cure-btn').addEventListener('click', () => {
+      if (Game.cureCollapse()) {
+        $('collapse-banner').classList.add('hidden');
+        Effects.toast('因果律機関の力で概念崩壊を鎮圧した!', '🌀');
+        Effects.confetti(window.innerWidth / 2, 60, 30);
+        updateTopbar();
+      }
+    });
+  }
+
   function currentTrack() {
     const s = Game.getState();
     return BGM_TRACKS.find((t) => t.id === s.currentBgm) || BGM_TRACKS[0];
@@ -409,7 +425,9 @@ const UI = (() => {
     renderStats();
     renderPrestige();
     renderBuildingsLayer();
+    renderDecorations();
     renderDaily();
+    checkFullCompletion();
   }
 
   function updateTopbar() {
@@ -450,6 +468,9 @@ const UI = (() => {
       }
       if (b.prevention && b.prevention.petition) {
         preventBadge += ` <span class="district-badge" title="陳情(住民の苦情)の発生自体を未然に防ぐ確率(郵便局・会計事務所が多いほど上昇、最大95%)">📮陳情予防${Math.round(Game.petitionPreventionChance() * 100)}%</span>`;
+      }
+      if (b.prevention && b.prevention.collapse) {
+        preventBadge += ` <span class="district-badge" title="概念崩壊の発生自体を未然に防ぐ確率(夢想収集庁・因果律機関が多いほど上昇、最大95%)">🌀崩壊予防${Math.round(Game.collapsePreventionChance() * 100)}%</span>`;
       }
       card.innerHTML = `
         <div class="card-icon">${b.emoji}</div>
@@ -687,10 +708,11 @@ const UI = (() => {
       </div>
       <div class="prestige-box">
         <p>💎 名声ショップ</p>
-        <p class="card-desc">名声ポイントを消費して恒久アップグレードを購入できます(都市合併しても失われません)。都市合併の回数を重ねるほど新しいティアが解放されます。</p>
+        <p class="card-desc">名声ポイントを消費して恒久アップグレードを購入できます(都市合併しても失われません)。稼いだ名声ポイントの累計が大きくなるほど新しいティアが解放されます。</p>
         <p class="card-desc">利用可能: <b>${Game.fameAvailable()}pt</b></p>
       </div>
-      <div id="fame-shop-list" class="fame-shop-list"></div>`;
+      <div id="fame-shop-list" class="fame-shop-list"></div>
+      ${renderDimensionSectionHtml(s)}`;
     const btn = $('prestige-btn');
     if (btn) {
       btn.addEventListener('click', () => {
@@ -700,6 +722,123 @@ const UI = (() => {
       });
     }
     renderFameShop();
+    bindDimensionSection();
+  }
+
+  // 次元融合(第2のプレステージ層)。lifetimeMoneyが解放ラインに届く前は説明だけ表示して混乱を避ける。
+  function renderDimensionSectionHtml(s) {
+    const potentialShards = Game.potentialDimensionShards();
+    const gain = potentialShards - (s.dimensionShards || 0);
+    const relicUnlocked = Game.relicShopUnlocked();
+    if (potentialShards <= 0 && (s.dimensionShards || 0) <= 0) {
+      return `
+        <div class="prestige-box dimension-box">
+          <p>🌌 次元融合</p>
+          <p class="card-desc">都市合併をさらに周回した先にある、もう一段上のリセット機構です。累計獲得資金が ${formatNum(DIMENSION_FUSION_DIVISOR)}円 に到達すると解放されます。(現在: ${formatNum(s.lifetimeMoney)}円)</p>
+        </div>`;
+    }
+    let html = `
+      <div class="prestige-box dimension-box">
+        <p>🌌 次元融合</p>
+        <p class="card-desc">融合すると、資金・施設・名声ポイント・都市合併回数がリセットされる代わりに「次元結晶」を獲得します。既に購入済みの名声ショップ・町の拡張・幸福度政策・実績・ミッションは失われません。</p>
+        <p class="card-desc">融合すると次元結晶 <b>+${gain}</b> 獲得します。(合計 ${potentialShards}個 / 現在 ${s.dimensionShards || 0}個・融合回数 ${s.dimensionFusionCount || 0}回)</p>
+        <button id="dimension-fusion-btn" class="danger-btn" ${gain > 0 ? '' : 'disabled'}>${gain > 0 ? '次元融合を実行する' : 'まだ増えていません'}</button>
+      </div>
+      <div class="prestige-box">
+        <p>💠 次元融合ショップ</p>
+        <p class="card-desc">次元結晶を消費して、名声ショップとは別枠で永久に乗り続ける強力な恒久アップグレードを購入できます。</p>
+        <p class="card-desc">利用可能: <b>${Game.dimensionAvailable()}個</b></p>
+      </div>
+      <div id="dimension-shop-list" class="fame-shop-list"></div>`;
+    if (relicUnlocked) {
+      html += `
+      <div class="prestige-box relic-box">
+        <p>🏺 レリックショップ</p>
+        <p class="card-desc">全実績・全名声ショップを完全制覇した者だけに解放される、真の最終コンテンツです。通貨は次元結晶を共有します。</p>
+        <p class="card-desc">利用可能: <b>${Game.dimensionAvailable()}個</b></p>
+      </div>
+      <div id="relic-shop-list" class="fame-shop-list"></div>`;
+    }
+    return html;
+  }
+
+  function bindDimensionSection() {
+    const btn = $('dimension-fusion-btn');
+    if (btn) {
+      const s = Game.getState();
+      const gain = Game.potentialDimensionShards() - (s.dimensionShards || 0);
+      btn.addEventListener('click', () => {
+        showConfirm(`次元融合すると、資金・施設・名声ポイント・都市合併回数がリセットされます(既に購入済みの名声ショップ等は失われません)。次元結晶 +${gain} を獲得して恒久的に強化されます。実行しますか?`, () => {
+          if (Game.doDimensionFusion()) renderAll();
+        });
+      });
+    }
+    renderDimensionShop();
+    renderRelicShop();
+  }
+
+  function renderDimensionShop() {
+    const listEl = $('dimension-shop-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    DIMENSION_SHOP.forEach((item) => listEl.appendChild(dimensionCard(item)));
+  }
+
+  function dimensionCard(item) {
+    const owned = Game.isDimensionUpgradeOwned(item.id);
+    const available = Game.dimensionAvailable();
+    const affordable = !owned && available >= item.cost;
+    const card = document.createElement('div');
+    card.className = 'card upgrade-card' + (owned ? ' owned' : (affordable ? '' : ' disabled'));
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="card-title">${item.name}</div>
+        <div class="card-desc">${item.desc}</div>
+      </div>
+      ${owned ? '<span class="owned-badge">✅取得済み</span>' : `<button class="buy-btn" ${affordable ? '' : 'disabled'}>${item.cost}個</button>`}
+    `;
+    if (!owned) {
+      card.querySelector('.buy-btn').addEventListener('click', () => {
+        if (Game.buyDimensionUpgrade(item.id)) {
+          if (Game.getShowBuyToasts()) Effects.toast(`${item.name} を取得!`, '💠');
+          renderDimensionShop();
+          updateTopbar();
+        }
+      });
+    }
+    return card;
+  }
+
+  function renderRelicShop() {
+    const listEl = $('relic-shop-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    RELIC_SHOP.forEach((item) => listEl.appendChild(relicCard(item)));
+  }
+
+  function relicCard(item) {
+    const owned = Game.isRelicOwned(item.id);
+    const available = Game.dimensionAvailable();
+    const affordable = !owned && available >= item.cost;
+    const card = document.createElement('div');
+    card.className = 'card upgrade-card' + (owned ? ' owned' : (affordable ? '' : ' disabled'));
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="card-title">${item.name}</div>
+        <div class="card-desc">${item.desc}</div>
+      </div>
+      ${owned ? '<span class="owned-badge">✅取得済み</span>' : `<button class="buy-btn" ${affordable ? '' : 'disabled'}>${item.cost}個</button>`}
+    `;
+    if (!owned) {
+      card.querySelector('.buy-btn').addEventListener('click', () => {
+        if (Game.buyRelic(item.id)) {
+          if (Game.getShowBuyToasts()) Effects.toast(`${item.name} を取得!`, '🏺');
+          renderRelicShop();
+          updateTopbar();
+        }
+      });
+    }
+    return card;
   }
 
   function renderFameShop() {
@@ -936,6 +1075,60 @@ const UI = (() => {
     badge.textContent = `+${formatNum(totalHidden)}軒`;
   }
 
+  // --- 町の装飾コレクション: 実績の達成数に応じて自動的に現れる、経済効果のない見た目だけの飾り ---
+  // idの文字列から固定の疑似乱数位置を作るので、再描画のたびに位置が飛ばない。
+  function decorationHashPosition(id) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    const x = 6 + (h % 8800) / 100; // 6~94%
+    const y = 56 + ((Math.floor(h / 8800)) % 4000) / 100; // 地面の帯(56~96%)に収める
+    return { x, y: Math.min(96, y) };
+  }
+  function renderDecorations() {
+    const layer = $('decorations-layer');
+    if (!layer) return;
+    const count = (Game.getState().achievements || []).length;
+    const unlocked = DECORATIONS.filter((d) => count >= d.need);
+    const currentIds = new Set(unlocked.map((d) => d.id));
+    Array.from(layer.children).forEach((el) => {
+      if (!currentIds.has(el.dataset.id)) el.remove();
+    });
+    unlocked.forEach((d) => {
+      if (layer.querySelector(`[data-id="${d.id}"]`)) return;
+      const pos = decorationHashPosition(d.id);
+      const span = document.createElement('span');
+      span.className = 'decoration-icon';
+      span.dataset.id = d.id;
+      span.textContent = d.emoji;
+      span.title = `${d.name}: ${d.desc}`;
+      span.style.left = `${pos.x}%`;
+      span.style.top = `${pos.y}%`;
+      layer.appendChild(span);
+    });
+  }
+
+  // --- 完全制覇の特別演出: 全実績・全名声ショップ・全施設1,000個以上を初めて同時に満たした瞬間だけ表示する ---
+  function checkFullCompletion() {
+    if (!Game.isFullCompletion()) return;
+    if (!Game.markUiFlag('seen_full_completion')) return; // 既に一度演出済み
+    showFullCompletionModal();
+  }
+  function showFullCompletionModal() {
+    Effects.fireworksShow(12);
+    Effects.screenShake(20, 800);
+    Effects.sound('prestige');
+    const modal = $('changelog-modal');
+    modal.innerHTML = `
+      <div class="modal-box completion-modal">
+        <h2>🏆 完全制覇!</h2>
+        <p>全ての実績、名声ショップの全アイテム、そして全ての施設を1,000個以上——あなたはこの町を隅々まで極めました。</p>
+        <p class="offline-earned">👑 称号「タウンDELUXEマイスター」</p>
+        <p class="card-desc">おめでとうございます。次元融合やレリックショップ、そしてあなた自身の物語は、まだ続きます。</p>
+        <div class="modal-actions"><button id="completion-close">閉じる</button></div>
+      </div>`;
+    modal.classList.remove('hidden');
+    $('completion-close').addEventListener('click', () => modal.classList.add('hidden'));
+  }
 
   function renderSky() {
     const hour = new Date().getHours();
@@ -1044,6 +1237,11 @@ const UI = (() => {
     ];
     const mode = Game.getBuildingDisplayMode();
     const hiddenCount = (Game.getState().hiddenBuildingIds || []).length;
+    const autoRows = [
+      { id: 'set-auto-quest', label: '🎓 自動ミッション受け取り', desc: '達成済みの恒久ミッションを自動で受け取る', unlocked: Game.isAutoQuestClaimUnlocked(), need: 200, on: Game.getAutoClaimQuests() },
+      { id: 'set-auto-prestige', label: '🌟 自動都市合併', desc: '名声ポイントが増える時、自動で都市合併する', unlocked: Game.isAutoPrestigeUnlocked(), need: 500, on: Game.getAutoPrestige() },
+      { id: 'set-auto-dimension', label: '🌌 自動次元融合', desc: '次元結晶が増える時、自動で次元融合する', unlocked: Game.isAutoDimensionFusionUnlocked(), need: 1000, on: Game.getAutoDimensionFusion() }
+    ];
     modal.innerHTML = `
       <div class="modal-box">
         <h2>⚙️ 設定</h2>
@@ -1063,6 +1261,17 @@ const UI = (() => {
           <button data-mode="none" class="order-btn bd-mode-btn${mode === 'none' ? ' active' : ''}">完全に非表示</button>
         </div>
         <button id="open-building-hide-btn" class="buy-all-btn settings-wide-btn">🚫 表示しない施設を個別に選ぶ(現在${hiddenCount}件非表示)</button>
+        <h3 class="settings-subhead">🤖 自動化(実績を深く進めると解放)</h3>
+        <div class="settings-list">
+          ${autoRows.map((r) => r.unlocked ? `
+            <label class="settings-row">
+              <input type="checkbox" id="${r.id}"${r.on ? ' checked' : ''}>
+              <span class="settings-row-text"><b>${r.label}</b><span class="card-desc">${r.desc}</span></span>
+            </label>` : `
+            <div class="settings-row settings-row-locked">
+              <span class="settings-row-text"><b>🔒 ${r.label}</b><span class="card-desc">実績${formatNum(r.need)}個達成で解放(現在${(Game.getState().achievements || []).length}個)</span></span>
+            </div>`).join('')}
+        </div>
         <div class="modal-actions"><button id="settings-close">閉じる</button></div>
       </div>`;
     modal.classList.remove('hidden');
@@ -1082,6 +1291,12 @@ const UI = (() => {
       });
     });
     $('open-building-hide-btn').addEventListener('click', showBuildingVisibilityModal);
+    const autoQuestEl = $('set-auto-quest');
+    if (autoQuestEl) autoQuestEl.addEventListener('change', () => Game.toggleAutoClaimQuests());
+    const autoPrestigeEl = $('set-auto-prestige');
+    if (autoPrestigeEl) autoPrestigeEl.addEventListener('change', () => Game.toggleAutoPrestige());
+    const autoDimensionEl = $('set-auto-dimension');
+    if (autoDimensionEl) autoDimensionEl.addEventListener('change', () => Game.toggleAutoDimensionFusion());
     $('settings-close').addEventListener('click', () => modal.classList.add('hidden'));
   }
 
@@ -1141,6 +1356,8 @@ const UI = (() => {
     const rect = $('town-hall').getBoundingClientRect();
     Effects.confetti(rect.left + rect.width / 2, rect.top, 50);
     if (activeTab === 'achievement') renderAchievements();
+    renderDecorations();
+    checkFullCompletion();
   }
 
   function onPrestige(data) {
@@ -1160,6 +1377,10 @@ const UI = (() => {
     } else if (evt.type === 'mission-claimed') {
       Effects.toast(`${evt.mission.icon} デイリーミッション達成!+${formatNum(evt.mission.reward)}円`, '📅');
       updateTopbar();
+    } else if (evt.type === 'dimension-fusion') {
+      Effects.fireworksShow(8);
+      Effects.screenShake(18, 600);
+      Effects.toast(`🌌 次元融合完了!次元結晶 +${evt.gained}`, '🌌');
     } else if (evt.type === 'quest-claimed') {
       // 「全部受け取る」でsilent:trueのまま連続で呼ばれた分は、個別トーストを出さず一括受け取り側でまとめて表示する
       if (!evt.silent) {
@@ -1222,6 +1443,17 @@ const UI = (() => {
       updateTopbar();
     } else if (evt.type === 'fire-prevented') {
       Effects.toast('🧯 消防系施設のおかげで火事を未然に防いだ!', '🧯');
+    } else if (evt.type === 'collapse-start') {
+      showCollapseBanner(evt);
+      Effects.toast(`${evt.icon} ${evt.name}が発生した!`, evt.icon);
+      Effects.sound('error');
+      Effects.screenShake(6, 300);
+    } else if (evt.type === 'collapse-end') {
+      $('collapse-banner').classList.add('hidden');
+      if (!evt.cured) Effects.toast('🌀 概念崩壊が自然に収まった', '🌀');
+      updateTopbar();
+    } else if (evt.type === 'collapse-prevented') {
+      Effects.toast('🌙 夢想収集庁・因果律機関のおかげで概念崩壊を未然に防いだ!', '🌙');
     } else if (evt.type === 'crime-prevented') {
       Effects.toast('🚓 交番のおかげで犯罪を未然に防いだ!', '🚓');
     } else if (evt.type === 'crime-occurred') {
@@ -1261,6 +1493,13 @@ const UI = (() => {
     $('fire-text').textContent = `${evt.name}が発生中!幸福度が低下しています(消防系施設で軽減)`;
     $('fire-cure-btn').textContent = `🚒 消防隊を出動 (${formatNum(Game.fireCureCost())}円)`;
     $('fire-banner').classList.remove('hidden');
+  }
+
+  function showCollapseBanner(evt) {
+    $('collapse-icon').textContent = evt.icon;
+    $('collapse-text').textContent = `${evt.name}が発生中!幸福度が低下しています(夢想収集庁・因果律機関で軽減)`;
+    $('collapse-cure-btn').textContent = `🌀 概念を鎮圧 (${formatNum(Game.collapseCureCost())}円)`;
+    $('collapse-banner').classList.remove('hidden');
   }
 
   function positionGolden() {
@@ -1308,6 +1547,9 @@ const UI = (() => {
     }
     if (Game.isFireActive() && !$('fire-banner').classList.contains('hidden')) {
       $('fire-cure-btn').textContent = `🚒 消防隊を出動 (${formatNum(Game.fireCureCost())}円)`;
+    }
+    if (Game.isCollapseActive() && !$('collapse-banner').classList.contains('hidden')) {
+      $('collapse-cure-btn').textContent = `🌀 概念を鎮圧 (${formatNum(Game.collapseCureCost())}円)`;
     }
   }, 1000);
 

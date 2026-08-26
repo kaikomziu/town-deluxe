@@ -39,9 +39,11 @@ const Game = (() => {
     schedulePetition();
     scheduleSickness();
     scheduleFire();
+    scheduleCollapse();
     scheduleCrime();
     setInterval(tick, 100);
     scheduleAutoBuy();
+    scheduleAutomation();
     setInterval(() => { saveGame(state); emit('event', { type: 'autosave' }); }, 10000);
     window.addEventListener('beforeunload', () => saveGame(state));
     document.addEventListener('visibilitychange', () => { if (document.hidden) saveGame(state); });
@@ -136,6 +138,10 @@ const Game = (() => {
       const mitigation = firePower() * 10;
       happiness -= Math.max(2, state.hazards.fire.severity - mitigation);
     }
+    if (state.hazards.collapse && Date.now() < state.hazards.collapse.until) {
+      const mitigation = collapsePower() * 10;
+      happiness -= Math.max(2, state.hazards.collapse.severity - mitigation);
+    }
     // 人口は最大人口(町の拡張で引き上げ)まで。超過分は住みきれず、幸福度に軽いペナルティ
     const cap = maxPopulation();
     if (pop > cap) {
@@ -160,6 +166,7 @@ const Game = (() => {
     checkPetitionExpire();
     checkSickness();
     checkFire();
+    checkCollapse();
     checkRank();
     checkDailyReset();
     checkAchievements();
@@ -248,6 +255,28 @@ const Game = (() => {
       }
       scheduleAutoBuy();
     }, delay);
+  }
+
+  // --- 自動化ご褒美: 実績を深く進めた古参プレイヤー向けに、手間を減らす機能を解放する ---
+  function isAutoQuestClaimUnlocked() { return (state.achievements || []).length >= 200; }
+  function isAutoPrestigeUnlocked() { return (state.achievements || []).length >= 500; }
+  function isAutoDimensionFusionUnlocked() { return (state.achievements || []).length >= 1000; }
+  function getAutoClaimQuests() { return !!state.autoClaimQuests; }
+  function toggleAutoClaimQuests() { state.autoClaimQuests = !state.autoClaimQuests; return state.autoClaimQuests; }
+  function getAutoPrestige() { return !!state.autoPrestige; }
+  function toggleAutoPrestige() { state.autoPrestige = !state.autoPrestige; return state.autoPrestige; }
+  function getAutoDimensionFusion() { return !!state.autoDimensionFusion; }
+  function toggleAutoDimensionFusion() { state.autoDimensionFusion = !state.autoDimensionFusion; return state.autoDimensionFusion; }
+  function scheduleAutomation() {
+    setTimeout(() => {
+      if (state.autoClaimQuests && isAutoQuestClaimUnlocked()) {
+        const hasReady = QUESTS.some((q) => !isQuestClaimed(q.id) && isQuestStageUnlocked(q.stage) && q.check(state));
+        if (hasReady) claimAllQuests();
+      }
+      if (state.autoPrestige && isAutoPrestigeUnlocked() && canPrestige()) doPrestige();
+      if (state.autoDimensionFusion && isAutoDimensionFusionUnlocked() && canFuseDimension()) doDimensionFusion();
+      scheduleAutomation();
+    }, 5000);
   }
 
   function buyUpgrade(id, opts) {
@@ -603,6 +632,78 @@ const Game = (() => {
   }
   function isFireActive() { return Date.now() < state.hazards.fire.until; }
 
+  // --- 概念崩壊イベント(第二部専用ハザード。火事と同じ「予防→軽減→早期鎮圧」の型。
+  //     夢想収集庁・因果律機関が予防を担う) ---
+  function scheduleCollapse() {
+    const delay = 300000 + Math.random() * 240000; // 5~9分
+    setTimeout(() => {
+      attemptCollapse();
+      scheduleCollapse();
+    }, delay);
+  }
+  let collapseBuildingsCache = null;
+  function collapseBuildings() {
+    if (!collapseBuildingsCache) collapseBuildingsCache = BUILDINGS.filter((b) => b.prevention && b.prevention.collapse);
+    return collapseBuildingsCache;
+  }
+  function collapsePower() {
+    return collapseBuildings().reduce((sum, b) => sum + buildingCount(b.id) * b.prevention.collapse, 0);
+  }
+  function collapsePreventionChance() {
+    return Math.min(0.95, collapsePower() * fameEffectMult('preventionMult'));
+  }
+  function attemptCollapse() {
+    if (Date.now() < state.hazards.collapse.until) return; // 既に発生中なら重複させない
+    const power = collapsePower();
+    if (power > 0 && Math.random() < collapsePreventionChance()) {
+      state.hazards.collapse.prevented = (state.hazards.collapse.prevented || 0) + 1;
+      emit('event', { type: 'collapse-prevented' });
+      return;
+    }
+    triggerCollapse();
+  }
+  function triggerCollapse() {
+    if (Date.now() < state.hazards.collapse.until) return;
+    const power = collapsePower();
+    const baseSeverity = 20 + Math.random() * 12;
+    const severity = Math.max(4, (baseSeverity - power * 10) * fameEffectMult('sicknessSeverityMult'));
+    const baseDuration = 35000 + Math.random() * 25000;
+    const duration = Math.max(15000, (baseDuration - power * 15000) * fameEffectMult('sicknessDurationMult'));
+    const info = COLLAPSE_EVENTS[Math.floor(Math.random() * COLLAPSE_EVENTS.length)];
+    state.hazards.collapse.until = Date.now() + duration;
+    state.hazards.collapse.severity = severity;
+    state.hazards.collapse.name = info.name;
+    state.hazards.collapse.icon = info.icon;
+    recomputeStats();
+    emit('event', { type: 'collapse-start', name: info.name, icon: info.icon, severity, duration });
+  }
+  function checkCollapse() {
+    if (state.hazards.collapse.until > 0 && Date.now() > state.hazards.collapse.until) {
+      state.hazards.collapse.survived = (state.hazards.collapse.survived || 0) + 1;
+      state.hazards.collapse.until = 0;
+      state.hazards.collapse.severity = 0;
+      recomputeStats();
+      emit('event', { type: 'collapse-end', cured: false });
+    }
+  }
+  function collapseCureCost() {
+    return Math.max(300, Math.round(incomePerSec() * 55));
+  }
+  function cureCollapse() {
+    if (state.hazards.collapse.until <= Date.now()) return false;
+    const cost = collapseCureCost();
+    if (!canAfford(cost)) { Effects.sound('error'); return false; }
+    state.money -= cost;
+    state.hazards.collapse.until = 0;
+    state.hazards.collapse.severity = 0;
+    state.hazards.collapse.cured = (state.hazards.collapse.cured || 0) + 1;
+    recomputeStats();
+    Effects.sound('prestige');
+    emit('event', { type: 'collapse-end', cured: true });
+    return true;
+  }
+  function isCollapseActive() { return Date.now() < state.hazards.collapse.until; }
+
   // --- 空き巣・犯罪イベント(継続時間なし・瞬間発生型。交番が予防を担う) ---
   function scheduleCrime() {
     const delay = 200000 + Math.random() * 220000; // 約3.3~7分
@@ -920,9 +1021,14 @@ const Game = (() => {
   // 同様にキャッシュする(所持アイテムが変化するのは購入時とリセット時のみ)。
   let fameOwnedCache = null;
   function invalidateFameCache() { fameOwnedCache = null; }
+  // 名声ショップ・次元融合ショップ・レリックショップは全て同じeffect形式{type,value}を使うため、
+  // ここで所持アイテムを合算しておけば、fameEffectMult等の消費側コードは一切変更せずに済む。
   function fameOwnedItems() {
     if (fameOwnedCache) return fameOwnedCache;
-    fameOwnedCache = (state.fameShopUpgrades || []).map((id) => FAME_SHOP_BY_ID.get(id)).filter(Boolean);
+    const fame = (state.fameShopUpgrades || []).map((id) => FAME_SHOP_BY_ID.get(id)).filter(Boolean);
+    const dim = (state.dimensionShopUpgrades || []).map((id) => DIMENSION_SHOP_BY_ID.get(id)).filter(Boolean);
+    const relic = (state.relicShopUpgrades || []).map((id) => RELIC_SHOP_BY_ID.get(id)).filter(Boolean);
+    fameOwnedCache = fame.concat(dim, relic);
     return fameOwnedCache;
   }
   function fameEffectMult(type) {
@@ -1024,6 +1130,81 @@ const Game = (() => {
     return true;
   }
 
+  // --- 次元融合(第2のプレステージ層): 都市合併をさらに周回した先に解放される、恒久を超えた層。 ---
+  // 生涯の累計獲得資金(lifetimeMoneyは合併しても融合しても消えない)を元手に「次元結晶」を得る。
+  // 融合すると都市合併と同じもの(資金・施設・建物アップグレード・街並み)に加えて、名声ポイントと
+  // その周の都市合併回数もリセットされる(=名声ショップの未購入分をまた一から解放し直す必要がある)が、
+  // 既に購入済みの名声ショップ・町の拡張・幸福度政策・実績・ミッションの効果は失われない。
+  function potentialDimensionShards() {
+    if (state.lifetimeMoney < DIMENSION_FUSION_DIVISOR) return 0;
+    return Math.floor(Math.cbrt(state.lifetimeMoney / DIMENSION_FUSION_DIVISOR));
+  }
+  function canFuseDimension() { return potentialDimensionShards() > (state.dimensionShards || 0); }
+  function doDimensionFusion() {
+    const gained = potentialDimensionShards() - (state.dimensionShards || 0);
+    if (gained <= 0) return false;
+    state.dimensionShards = potentialDimensionShards();
+    state.dimensionFusionCount = (state.dimensionFusionCount || 0) + 1;
+    state.money = 0;
+    BUILDINGS.forEach((b) => (state.buildings[b.id] = 0));
+    state.upgrades = [];
+    state.layout = [];
+    state.famePoints = 0;
+    state.fameSpent = 0;
+    state.prestigeCount = 0;
+    invalidateUpgradeCaches();
+    invalidateLayoutTypeCounts();
+    recomputeStats();
+    Effects.sound('prestige');
+    emit('event', { type: 'dimension-fusion', gained });
+    return true;
+  }
+  // ショップの購入では減らさず、fameAvailable()と同じ「使っても減らない生涯到達値-使用済み量」の形にする
+  function dimensionAvailable() { return (state.dimensionShards || 0) - (state.dimensionSpent || 0); }
+  function isDimensionUpgradeOwned(id) { return (state.dimensionShopUpgrades || []).includes(id); }
+  function buyDimensionUpgrade(id) {
+    const item = DIMENSION_SHOP_BY_ID.get(id);
+    if (!item) return false;
+    if (isDimensionUpgradeOwned(id)) return false;
+    if (dimensionAvailable() < item.cost) { Effects.sound('error'); return false; }
+    state.dimensionSpent = (state.dimensionSpent || 0) + item.cost;
+    state.dimensionShopUpgrades = state.dimensionShopUpgrades || [];
+    state.dimensionShopUpgrades.push(id);
+    invalidateFameCache();
+    recomputeStats();
+    Effects.sound('buy');
+    emit('event', { type: 'dimension-upgrade-bought', item });
+    return true;
+  }
+
+  // --- レリックショップ: 全実績・全名声ショップを完全制覇した者だけに解放される真の最終コンテンツ。 ---
+  // 通貨は次元結晶を流用する(dimensionAvailableを共有)。
+  function relicShopUnlocked() {
+    return (state.achievements || []).length >= ACHIEVEMENTS.length && (state.fameShopUpgrades || []).length >= FAME_SHOP.length;
+  }
+  // 完全制覇: 全実績・全名声ショップ・全施設1,000個以上を同時に満たす、真のカンスト条件(m10_finalクエストと同一)
+  function isFullCompletion() {
+    return (state.achievements || []).length >= ACHIEVEMENTS.length &&
+      (state.fameShopUpgrades || []).length >= FAME_SHOP.length &&
+      BUILDINGS.every((b) => (state.buildings[b.id] || 0) >= 1000);
+  }
+  function isRelicOwned(id) { return (state.relicShopUpgrades || []).includes(id); }
+  function buyRelic(id) {
+    if (!relicShopUnlocked()) return false;
+    const item = RELIC_SHOP_BY_ID.get(id);
+    if (!item) return false;
+    if (isRelicOwned(id)) return false;
+    if (dimensionAvailable() < item.cost) { Effects.sound('error'); return false; }
+    state.dimensionSpent = (state.dimensionSpent || 0) + item.cost;
+    state.relicShopUpgrades = state.relicShopUpgrades || [];
+    state.relicShopUpgrades.push(id);
+    invalidateFameCache();
+    recomputeStats();
+    Effects.sound('buy');
+    emit('event', { type: 'relic-bought', item });
+    return true;
+  }
+
   function toggleMute() {
     state.muted = !state.muted;
     Effects.setMuted(state.muted);
@@ -1082,6 +1263,7 @@ const Game = (() => {
     getPetition: () => petition, resolvePetition, petitionCost, petitionPreventionChance,
     isSick: () => Date.now() < state.sicknessUntil, cureSickness, sicknessCureCost, sicknessPreventionChance,
     isFireActive, cureFire, fireCureCost, firePreventionChance,
+    isCollapseActive, cureCollapse, collapseCureCost, collapsePreventionChance,
     crimePreventionChance,
     getLayout: () => state.layout,
     getRank: () => RANK_TIERS[rankIndexFor(state.lifetimeMoney)],
@@ -1091,8 +1273,14 @@ const Game = (() => {
     getShowBuyToasts, toggleBuyToasts,
     getShowEffects, toggleEffects, getShowScreenShake, toggleScreenShake,
     getBuildingDisplayMode, setBuildingDisplayMode, isBuildingHidden, toggleBuildingHidden,
+    isAutoQuestClaimUnlocked, isAutoPrestigeUnlocked, isAutoDimensionFusionUnlocked,
+    getAutoClaimQuests, toggleAutoClaimQuests, getAutoPrestige, toggleAutoPrestige,
+    getAutoDimensionFusion, toggleAutoDimensionFusion,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
     fameAvailable, isFameShopTierUnlocked, isFameUpgradeOwned, buyFameUpgrade,
+    potentialDimensionShards, canFuseDimension, doDimensionFusion, dimensionAvailable,
+    isDimensionUpgradeOwned, buyDimensionUpgrade,
+    relicShopUnlocked, isRelicOwned, buyRelic, isFullCompletion,
     maxPopulation, isTownExpansionOwned, buyTownExpansion,
     maxHappiness, isHappinessExpansionOwned, buyHappinessExpansion,
     toggleMute, toggleBgmMute, setBgmVolume, buyBgmTrack, selectBgm, doReset, saveNow: () => saveGame(state)
