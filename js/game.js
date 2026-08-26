@@ -768,6 +768,23 @@ const Game = (() => {
     return state.showPedestrians;
   }
 
+  // 街並みの建物表示: 施設が130種類まで増え、1種類あたり最大24個(合計最大3000超)の
+  // アイコンが並びうるため、重く感じる場合に間引く/個別に隠す/完全に消す設定を用意する
+  function getBuildingDisplayMode() { return state.buildingDisplayMode || 'all'; }
+  function setBuildingDisplayMode(mode) {
+    if (!['all', 'dedupe', 'none'].includes(mode)) return getBuildingDisplayMode();
+    state.buildingDisplayMode = mode;
+    return mode;
+  }
+  function isBuildingHidden(id) { return (state.hiddenBuildingIds || []).includes(id); }
+  function toggleBuildingHidden(id) {
+    state.hiddenBuildingIds = state.hiddenBuildingIds || [];
+    const idx = state.hiddenBuildingIds.indexOf(id);
+    if (idx >= 0) state.hiddenBuildingIds.splice(idx, 1);
+    else state.hiddenBuildingIds.push(id);
+    return isBuildingHidden(id);
+  }
+
   // アップグレード購入時の「◯◯を取得!」系トースト。連続購入を邪魔しないようオフにできる
   function toggleBuyToasts() {
     state.showBuyToasts = !state.showBuyToasts;
@@ -999,6 +1016,7 @@ const Game = (() => {
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,
     getShowBuyToasts, toggleBuyToasts,
     getShowEffects, toggleEffects, getShowScreenShake, toggleScreenShake,
+    getBuildingDisplayMode, setBuildingDisplayMode, isBuildingHidden, toggleBuildingHidden,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
     fameAvailable, isFameShopTierUnlocked, isFameUpgradeOwned, buyFameUpgrade,
     maxPopulation, isTownExpansionOwned, buyTownExpansion,

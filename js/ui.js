@@ -770,11 +770,36 @@ const UI = (() => {
   }
 
   // --- 街並みシーン(購入時にランダムな位置へ設置) ---
+  // 施設が130種類×最大24個/種まで増えうるため、重く感じる場合向けに表示モードを用意する:
+  //   all(既定)   : そのまま全部表示
+  //   dedupe      : 施設1種類につきアイコン1つだけ表示して間引く
+  //   none        : 街並みを完全に非表示
+  // さらにhiddenBuildingIdsに含まれる施設は、上記モードによらず個別に非表示にできる。
   let renderedLayoutIds = new Set();
   function renderBuildingsLayer() {
     const layer = $('buildings-layer');
+    const mode = Game.getBuildingDisplayMode();
     const layout = Game.getLayout();
-    const currentIds = new Set(layout.map((e) => e.id));
+
+    if (mode === 'none') {
+      if (renderedLayoutIds.size > 0 || layer.children.length > 0) {
+        layer.innerHTML = '';
+        renderedLayoutIds = new Set();
+      }
+      renderOverflowBadge();
+      return;
+    }
+
+    const seenType = new Set(); // dedupeモードで「その種類は表示済み」を判定する
+    const visible = layout.filter((e) => {
+      if (Game.isBuildingHidden(e.type)) return false;
+      if (mode === 'dedupe') {
+        if (seenType.has(e.type)) return false;
+        seenType.add(e.type);
+      }
+      return true;
+    });
+    const currentIds = new Set(visible.map((e) => e.id));
 
     // 経済上のカウントが0(合併リセット後など)になったらレイアウトも全消去
     if (layout.length === 0) {
@@ -782,7 +807,7 @@ const UI = (() => {
       renderedLayoutIds = new Set();
     }
 
-    // 既存DOMのうち、もう存在しないものを除去(通常は増える一方だが念のため)
+    // 既存DOMのうち、もう表示対象でないものを除去(施設数が減った・設定変更で隠れた場合など)
     renderedLayoutIds.forEach((id) => {
       if (!currentIds.has(id)) {
         const el = layer.querySelector(`[data-id="${id}"]`);
@@ -792,7 +817,7 @@ const UI = (() => {
     });
 
     // 新規追加分だけDOMを足す(既存の位置はドラッグ結果を保つため触らない)
-    layout.forEach((entry) => {
+    visible.forEach((entry) => {
       if (renderedLayoutIds.has(entry.id)) return;
       const b = BUILDINGS.find((x) => x.id === entry.type);
       if (!b) return;
@@ -819,13 +844,25 @@ const UI = (() => {
   }
 
   function renderOverflowBadge() {
+    const mode = Game.getBuildingDisplayMode();
+    let badge = document.getElementById('layout-overflow');
+    if (mode === 'none') {
+      if (badge) badge.remove();
+      return;
+    }
+    // 施設ごとにO(1)で「実際に街に表示されている数」を数える(施設数×レイアウト数の総当たりを避ける)
+    const shownCounts = {};
+    Game.getLayout().forEach((e) => {
+      if (Game.isBuildingHidden(e.type)) return;
+      shownCounts[e.type] = (shownCounts[e.type] || 0) + 1;
+    });
     let totalHidden = 0;
     BUILDINGS.forEach((b) => {
+      if (Game.isBuildingHidden(b.id)) return; // 個別非表示にした施設は「隠れている」ではなく最初から数えない
       const count = Game.buildingCount(b.id);
-      const shown = Game.getLayout().filter((e) => e.type === b.id).length;
+      const shown = mode === 'dedupe' ? Math.min(1, count) : (shownCounts[b.id] || 0);
       totalHidden += Math.max(0, count - shown);
     });
-    let badge = document.getElementById('layout-overflow');
     if (totalHidden <= 0) {
       if (badge) badge.remove();
       return;
@@ -944,10 +981,12 @@ const UI = (() => {
       { id: 'set-effects', label: '🎉 演出(紙吹雪・花火)', desc: 'クリックや実績解除などの紙吹雪・花火・浮き出る数字', on: Game.getShowEffects() },
       { id: 'set-shake', label: '📳 画面シェイク', desc: 'ゴールデンビルや火事などで画面が揺れる演出', on: Game.getShowScreenShake() }
     ];
+    const mode = Game.getBuildingDisplayMode();
+    const hiddenCount = (Game.getState().hiddenBuildingIds || []).length;
     modal.innerHTML = `
       <div class="modal-box">
         <h2>⚙️ 設定</h2>
-        <p class="card-desc">演出が重く感じる場合は、ここでオフにできます。</p>
+        <p class="card-desc">演出や街並みの表示が重く感じる場合は、ここで調整できます。</p>
         <div class="settings-list">
           ${rows.map((r) => `
             <label class="settings-row">
@@ -955,6 +994,14 @@ const UI = (() => {
               <span class="settings-row-text"><b>${r.label}</b><span class="card-desc">${r.desc}</span></span>
             </label>`).join('')}
         </div>
+        <h3 class="settings-subhead">🏙️ 街並みの建物表示</h3>
+        <p class="card-desc">施設が${BUILDINGS.length}種類・最大24個/種まで増えるため、街並みが重い場合はここで間引けます(経営には影響しません)。</p>
+        <div class="buy-all-row">
+          <button data-mode="all" class="order-btn bd-mode-btn${mode === 'all' ? ' active' : ''}">すべて表示</button>
+          <button data-mode="dedupe" class="order-btn bd-mode-btn${mode === 'dedupe' ? ' active' : ''}">1種類1つに間引く</button>
+          <button data-mode="none" class="order-btn bd-mode-btn${mode === 'none' ? ' active' : ''}">完全に非表示</button>
+        </div>
+        <button id="open-building-hide-btn" class="buy-all-btn settings-wide-btn">🚫 表示しない施設を個別に選ぶ(現在${hiddenCount}件非表示)</button>
         <div class="modal-actions"><button id="settings-close">閉じる</button></div>
       </div>`;
     modal.classList.remove('hidden');
@@ -965,7 +1012,50 @@ const UI = (() => {
     $('set-buy-toast').addEventListener('change', () => Game.toggleBuyToasts());
     $('set-effects').addEventListener('change', () => Game.toggleEffects());
     $('set-shake').addEventListener('change', () => Game.toggleScreenShake());
+    modal.querySelectorAll('.bd-mode-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        Game.setBuildingDisplayMode(btn.dataset.mode);
+        renderBuildingsLayer();
+        showSettingsModal();
+      });
+    });
+    $('open-building-hide-btn').addEventListener('click', showBuildingVisibilityModal);
     $('settings-close').addEventListener('click', () => modal.classList.add('hidden'));
+  }
+
+  function showBuildingVisibilityModal() {
+    const modal = $('changelog-modal');
+    const rows = BUILDINGS.map((b) => {
+      const hidden = Game.isBuildingHidden(b.id);
+      return `
+        <label class="settings-row bv-row">
+          <input type="checkbox" data-bid="${b.id}"${hidden ? '' : ' checked'}>
+          <span class="settings-row-text">${b.emoji} ${b.name}</span>
+        </label>`;
+    }).join('');
+    modal.innerHTML = `
+      <div class="modal-box">
+        <h2>🚫 表示する施設を選ぶ</h2>
+        <p class="card-desc">チェックを外すと、街並みからそのアイコンが消えます(経営には影響しません)。</p>
+        <div class="settings-list bv-list">${rows}</div>
+        <div class="modal-actions">
+          <button id="bv-show-all">すべて表示に戻す</button>
+          <button id="bv-back">← 設定に戻る</button>
+        </div>
+      </div>`;
+    modal.classList.remove('hidden');
+    modal.querySelectorAll('[data-bid]').forEach((cb) => {
+      cb.addEventListener('change', () => {
+        Game.toggleBuildingHidden(cb.dataset.bid);
+        renderBuildingsLayer();
+      });
+    });
+    $('bv-show-all').addEventListener('click', () => {
+      BUILDINGS.forEach((b) => { if (Game.isBuildingHidden(b.id)) Game.toggleBuildingHidden(b.id); });
+      renderBuildingsLayer();
+      showBuildingVisibilityModal();
+    });
+    $('bv-back').addEventListener('click', showSettingsModal);
   }
 
   // --- ゲームイベント反応 ---

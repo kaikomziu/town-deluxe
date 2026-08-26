@@ -332,3 +332,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .settings-row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; user-select: none; }
 .settings-row input { accent-color: #7b5bf5; margin-top: 3px; }
 .settings-row-text { display: flex; flex-direction: column; }
+.settings-subhead { margin: 18px 0 4px; }
+.settings-wide-btn { width: 100%; margin-top: 8px; }
+.bv-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; max-height: 45vh; overflow-y: auto; }
+.bv-row { gap: 6px; font-size: 13px; }
+.bv-row input { margin-top: 1px; }
+@media (max-width: 560px) { .bv-list { grid-template-columns: 1fr; } }

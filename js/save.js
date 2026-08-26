@@ -71,6 +71,8 @@ function defaultState() {
     showBuyToasts: true,
     showEffects: true,
     showScreenShake: true,
+    buildingDisplayMode: 'all', // 'all' | 'dedupe'(施設1種類につき1つだけ表示) | 'none'(完全非表示)
+    hiddenBuildingIds: [], // 街並みに表示しない施設idの一覧(設定で個別に選択)
     districtBonusEverActive: false,
     seasonalComplaintsResolved: [],
     dailyMissionsClaimed: 0,
@@ -89,7 +91,7 @@ function defaultState() {
 // 種類数に応じて際限なく大きくなりうるフィールド。ここに載っているものはCookieに入れず、
 // LISTS_KEY(localStorage)側に保存する。新しく「〜のリスト」「〜ごとの状態を持つオブジェクト」
 // を追加するときは、ここに足すことを忘れないこと。
-const GROWING_FIELDS = ['achievements', 'upgrades', 'layout', 'fameShopUpgrades', 'buildings', 'bgmUnlocked', 'seasonalComplaintsResolved', 'daily', 'townExpansions', 'happinessExpansions'];
+const GROWING_FIELDS = ['achievements', 'upgrades', 'layout', 'fameShopUpgrades', 'buildings', 'bgmUnlocked', 'seasonalComplaintsResolved', 'daily', 'townExpansions', 'happinessExpansions', 'hiddenBuildingIds'];
 
 function saveGame(state) {
   state.lastSave = Date.now();
