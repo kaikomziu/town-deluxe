@@ -21,8 +21,8 @@ const BUILDINGS = [
   { id: 'bookstore',      name: '書店',          emoji: '📖', baseCost: 2100,                baseIncome: 7.5,        pop: 2,    happiness: 1,   desc: '本の香りに包まれる町の書店。知的好奇心を満たす。' },
   { id: 'music_shop',     name: '楽器店',        emoji: '🎸', baseCost: 2900,                baseIncome: 7.75,       pop: 2,    happiness: 2,   desc: '音楽好きが集う楽器店。町に音色を響かせる。' },
   { id: 'library',        name: '図書館',        emoji: '📚', baseCost: 4000,                baseIncome: 8,          pop: 2,    happiness: 5,   desc: '静かに知識を育む図書館。幸福度をじっくり底上げ。' },
-  { id: 'fire_brigade',   name: '消防団詰所',    emoji: '🧯', baseCost: 5300,                baseIncome: 12.3,       pop: 2,    happiness: 2,   desc: '地域の消防団が待機する詰所。初期消火で被害を抑える。' },
-  { id: 'police_box',     name: '交番',          emoji: '🚓', baseCost: 6900,                baseIncome: 19,         pop: 2,    happiness: 2,   desc: '町の安全を見守る交番。住民に安心を届ける。' },
+  { id: 'fire_brigade',   name: '消防団詰所',    emoji: '🧯', baseCost: 5300,                baseIncome: 12.3,       pop: 2,    happiness: 2,   desc: '地域の消防団が待機する詰所。初期消火で火事の被害を抑える。', prevention: { fire: 0.03 } },
+  { id: 'police_box',     name: '交番',          emoji: '🚓', baseCost: 6900,                baseIncome: 19,         pop: 2,    happiness: 2,   desc: '町の安全を見守る交番。空き巣などの犯罪を未然に防ぐ。', prevention: { crime: 0.08 } },
   { id: 'kids_center',    name: '児童館',        emoji: '🧸', baseCost: 9100,                baseIncome: 29.9,       pop: 3,    happiness: 3,   desc: '子供たちが安心して遊べる児童館。' },
   { id: 'school',         name: '学校',          emoji: '🏫', baseCost: 12000,               baseIncome: 47,         pop: 6,    happiness: 2,   desc: '教育で幸福度も少しアップ。' },
   { id: 'cram_school',    name: '学習塾',        emoji: '✏️', baseCost: 16000,               baseIncome: 58.6,       pop: 3,    happiness: 1,   desc: '受験勉強に励む子供たちが通う学習塾。' },
@@ -44,7 +44,7 @@ const BUILDINGS = [
   { id: 'blood_center',   name: '献血センター',  emoji: '🩸', baseCost: 2600000,              baseIncome: 2091,       pop: 5,    happiness: 1,   desc: '住民の善意が集まる献血センター。医療を静かに支える。', prevention: { sickness: 0.02 } },
   { id: 'arcade',         name: 'ゲームセンター', emoji: '🕹️', baseCost: 3300000,              baseIncome: 2390,       pop: 6,    happiness: 3,   desc: '光と音が溢れるゲームセンター。若者たちの溜まり場。' },
   { id: 'karaoke',        name: 'カラオケボックス', emoji: '🎤', baseCost: 4100000,            baseIncome: 2733,       pop: 6,    happiness: 3,   desc: '大声で歌ってストレス発散できるカラオケボックス。' },
-  { id: 'fire_station',   name: '消防署',        emoji: '🚒', baseCost: 5000000,              baseIncome: 3125,       pop: 9,    happiness: 3,   desc: '火事や事故から町を守る。住民の安心感がアップ。' },
+  { id: 'fire_station',   name: '消防署',        emoji: '🚒', baseCost: 5000000,              baseIncome: 3125,       pop: 9,    happiness: 3,   desc: '火事や事故から町を守る。住民の安心感がアップ。', prevention: { fire: 0.10 } },
   { id: 'recycling_plant',name: '清掃工場',      emoji: '♻️', baseCost: 10000000,             baseIncome: 4930,       pop: 8,    happiness: 1,   desc: '町のゴミを処理してきれいな環境を保つ。' },
   { id: 'station',        name: '駅',            emoji: '🚉', baseCost: 20000000,             baseIncome: 7800,       pop: 18,   happiness: 1,   desc: '人の流れを生み出す交通の要。' },
   { id: 'bus_terminal',   name: 'バスターミナル', emoji: '🚌', baseCost: 27000000,             baseIncome: 9347,       pop: 20,   happiness: 1,   desc: '町中を結ぶバス路線の拠点。' },
@@ -135,6 +135,22 @@ const SICKNESS_EVENTS = [
   { name: '食あたり',       icon: '🤢' },
   { name: '流行り病',       icon: '😷' },
   { name: '花粉症',         icon: '🌼' }
+];
+
+// 火事イベントのバリエーション(フレーバー用)。消防団詰所・消防署が予防・軽減を担う
+const FIRE_EVENTS = [
+  { name: 'ボヤ騒ぎ',     icon: '🔥' },
+  { name: '倉庫火災',     icon: '🏭' },
+  { name: '住宅火災',     icon: '🏠' },
+  { name: '大規模火災',   icon: '🚒' }
+];
+
+// 空き巣・犯罪イベントのバリエーション(フレーバー用)。交番が予防を担う瞬間発生型イベント
+const CRIME_EVENTS = [
+  { name: '空き巣',       icon: '🕵️' },
+  { name: 'スリ被害',     icon: '👛' },
+  { name: '詐欺被害',     icon: '📞' },
+  { name: '強盗',         icon: '🦹' }
 ];
 
 // BGMトラック一覧。price:0は最初から解放済み。それ以外は資金で購入して解放する
@@ -375,6 +391,43 @@ function generateAchievements() {
       id: `ach_sickness_prevented_${v}`, name: `🏥 病気を未然に防いだ${v}回`,
       desc: `病院の力で疫病の流行を${v}回未然に防ぐ`,
       check: (s) => (s.sicknessPrevented || 0) >= v
+    });
+  });
+
+  [1, 5, 20].forEach((v) => {
+    list.push({
+      id: `ach_fire_survived_${v}`, name: `🔥 火事を乗り越えた${v}回`,
+      desc: `火事の発生を${v}回乗り越える`,
+      check: (s) => ((s.hazards && s.hazards.fire && s.hazards.fire.survived) || 0) >= v
+    });
+  });
+  [1, 10, 30].forEach((v) => {
+    list.push({
+      id: `ach_fire_cured_${v}`, name: `🚒 消防隊の活躍${v}回`,
+      desc: `消防活動で火事を${v}回早期鎮火させる`,
+      check: (s) => ((s.hazards && s.hazards.fire && s.hazards.fire.cured) || 0) >= v
+    });
+  });
+  [1, 10, 50].forEach((v) => {
+    list.push({
+      id: `ach_fire_prevented_${v}`, name: `🧯 火事を未然に防いだ${v}回`,
+      desc: `消防系施設の力で火事を${v}回未然に防ぐ`,
+      check: (s) => ((s.hazards && s.hazards.fire && s.hazards.fire.prevented) || 0) >= v
+    });
+  });
+
+  [1, 10, 50].forEach((v) => {
+    list.push({
+      id: `ach_crime_prevented_${v}`, name: `🚓 犯罪を未然に防いだ${v}回`,
+      desc: `交番の力で犯罪を${v}回未然に防ぐ`,
+      check: (s) => (s.crimePrevented || 0) >= v
+    });
+  });
+  [1, 5, 20].forEach((v) => {
+    list.push({
+      id: `ach_crime_survived_${v}`, name: `🕵️ 被害を乗り越えた${v}回`,
+      desc: `犯罪被害を${v}回乗り越える`,
+      check: (s) => (s.crimeOccurred || 0) >= v
     });
   });
 

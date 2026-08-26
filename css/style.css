@@ -198,6 +198,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 #sickness-cure-btn { background: #ff8a3d; color: #2a1200; font-weight: 800; white-space: nowrap; }
 #sickness-cure-btn:hover:not(:disabled) { background: #ffa25f; }
 @keyframes sickness-pulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.15); } }
+.fire-banner { background: linear-gradient(90deg, #6b2f0a, #9a3f0a); color: #ffe0c2; }
+.fire-banner #fire-cure-btn { background: #ff6a3d; color: #2a1200; font-weight: 800; white-space: nowrap; }
+.fire-banner #fire-cure-btn:hover:not(:disabled) { background: #ff8a5f; }
 
 /* ---------- Panel ---------- */
 .panel {

@@ -36,6 +36,8 @@ const Game = (() => {
     scheduleUfo();
     schedulePetition();
     scheduleSickness();
+    scheduleFire();
+    scheduleCrime();
     setInterval(tick, 100);
     scheduleAutoBuy();
     setInterval(() => { saveGame(state); emit('event', { type: 'autosave' }); }, 10000);
@@ -128,6 +130,10 @@ const Game = (() => {
       const mitigation = medicalPower() * 12.5;
       happiness -= Math.max(2, state.sicknessSeverity - mitigation);
     }
+    if (Date.now() < state.hazards.fire.until) {
+      const mitigation = firePower() * 10;
+      happiness -= Math.max(2, state.hazards.fire.severity - mitigation);
+    }
     state.population = pop;
     state.happiness = Math.max(0, Math.min(150, happiness));
   }
@@ -145,6 +151,7 @@ const Game = (() => {
     checkGolden();
     checkPetitionExpire();
     checkSickness();
+    checkFire();
     checkRank();
     checkDailyReset();
     checkAchievements();
@@ -438,6 +445,114 @@ const Game = (() => {
     return true;
   }
 
+  // --- 火事イベント(病気と同じ「予防→軽減→早期鎮火」の型) ---
+  function scheduleFire() {
+    const delay = 240000 + Math.random() * 180000; // 4~7分
+    setTimeout(() => {
+      attemptFire();
+      scheduleFire();
+    }, delay);
+  }
+  let fireBuildingsCache = null;
+  function fireBuildings() {
+    if (!fireBuildingsCache) fireBuildingsCache = BUILDINGS.filter((b) => b.prevention && b.prevention.fire);
+    return fireBuildingsCache;
+  }
+  function firePower() {
+    return fireBuildings().reduce((sum, b) => sum + buildingCount(b.id) * b.prevention.fire, 0);
+  }
+  function firePreventionChance() {
+    return Math.min(0.95, firePower() * fameEffectMult('preventionMult'));
+  }
+  function attemptFire() {
+    if (Date.now() < state.hazards.fire.until) return; // 既に発生中なら重複させない
+    const power = firePower();
+    if (power > 0 && Math.random() < firePreventionChance()) {
+      state.hazards.fire.prevented = (state.hazards.fire.prevented || 0) + 1;
+      emit('event', { type: 'fire-prevented' });
+      return;
+    }
+    triggerFire();
+  }
+  function triggerFire() {
+    if (Date.now() < state.hazards.fire.until) return;
+    const power = firePower();
+    const baseSeverity = 15 + Math.random() * 9;
+    const severity = Math.max(3, (baseSeverity - power * 10) * fameEffectMult('sicknessSeverityMult'));
+    const baseDuration = 30000 + Math.random() * 25000;
+    const duration = Math.max(12000, (baseDuration - power * 15000) * fameEffectMult('sicknessDurationMult'));
+    const info = FIRE_EVENTS[Math.floor(Math.random() * FIRE_EVENTS.length)];
+    state.hazards.fire.until = Date.now() + duration;
+    state.hazards.fire.severity = severity;
+    state.hazards.fire.name = info.name;
+    state.hazards.fire.icon = info.icon;
+    recomputeStats();
+    emit('event', { type: 'fire-start', name: info.name, icon: info.icon, severity, duration });
+  }
+  function checkFire() {
+    if (state.hazards.fire.until > 0 && Date.now() > state.hazards.fire.until) {
+      state.hazards.fire.survived = (state.hazards.fire.survived || 0) + 1;
+      state.hazards.fire.until = 0;
+      state.hazards.fire.severity = 0;
+      recomputeStats();
+      emit('event', { type: 'fire-end', cured: false });
+    }
+  }
+  function fireCureCost() {
+    return Math.max(200, Math.round(incomePerSec() * 50));
+  }
+  function cureFire() {
+    if (state.hazards.fire.until <= Date.now()) return false;
+    const cost = fireCureCost();
+    if (!canAfford(cost)) { Effects.sound('error'); return false; }
+    state.money -= cost;
+    state.hazards.fire.until = 0;
+    state.hazards.fire.severity = 0;
+    state.hazards.fire.cured = (state.hazards.fire.cured || 0) + 1;
+    recomputeStats();
+    Effects.sound('prestige');
+    emit('event', { type: 'fire-end', cured: true });
+    return true;
+  }
+  function isFireActive() { return Date.now() < state.hazards.fire.until; }
+
+  // --- 空き巣・犯罪イベント(継続時間なし・瞬間発生型。交番が予防を担う) ---
+  function scheduleCrime() {
+    const delay = 200000 + Math.random() * 220000; // 約3.3~7分
+    setTimeout(() => {
+      attemptCrime();
+      scheduleCrime();
+    }, delay);
+  }
+  let policeBuildingsCache = null;
+  function policeBuildings() {
+    if (!policeBuildingsCache) policeBuildingsCache = BUILDINGS.filter((b) => b.prevention && b.prevention.crime);
+    return policeBuildingsCache;
+  }
+  function policePower() {
+    return policeBuildings().reduce((sum, b) => sum + buildingCount(b.id) * b.prevention.crime, 0);
+  }
+  function crimePreventionChance() {
+    return Math.min(0.95, policePower() * fameEffectMult('preventionMult'));
+  }
+  function attemptCrime() {
+    const power = policePower();
+    if (power > 0 && Math.random() < crimePreventionChance()) {
+      state.crimePrevented = (state.crimePrevented || 0) + 1;
+      emit('event', { type: 'crime-prevented' });
+      return;
+    }
+    // 交番が多いほど、防がれなかった時の被害額も小さくなる
+    const baseStealRate = 0.02 + Math.random() * 0.03; // 2~5%
+    const stealRate = Math.max(0.005, baseStealRate * Math.max(0.2, 1 - power));
+    const stolen = Math.round(state.money * stealRate);
+    const info = CRIME_EVENTS[Math.floor(Math.random() * CRIME_EVENTS.length)];
+    state.money = Math.max(0, state.money - stolen);
+    state.crimeOccurred = (state.crimeOccurred || 0) + 1;
+    state.crimeStolenTotal = (state.crimeStolenTotal || 0) + stolen;
+    emit('event', { type: 'crime-occurred', name: info.name, icon: info.icon, stolen });
+  }
+
   // --- 街並みレイアウト(ドラッグ配置) ---
   const MAX_LAYOUT_PER_BUILDING = 24;
   // 町役場(下部中央)の真下に建物が重なって掴めなくなるのを防ぐ「配置禁止ゾーン」
@@ -710,6 +825,8 @@ const Game = (() => {
     isRaining: () => Date.now() < rainUntil,
     getPetition: () => petition, resolvePetition, petitionCost,
     isSick: () => Date.now() < state.sicknessUntil, cureSickness, sicknessCureCost, sicknessPreventionChance,
+    isFireActive, cureFire, fireCureCost, firePreventionChance,
+    crimePreventionChance,
     getLayout: () => state.layout,
     getRank: () => RANK_TIERS[rankIndexFor(state.lifetimeMoney)],
     getDaily: () => state.daily, claimMission,

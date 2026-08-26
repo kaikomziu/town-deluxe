@@ -15,6 +15,7 @@ const UI = (() => {
     bindUfo();
     bindPetition();
     bindSickness();
+    bindFire();
     bindFooter();
     bindBgm();
     bindPedestrianToggle();
@@ -31,6 +32,10 @@ const UI = (() => {
     if (Game.isSick()) {
       const s = Game.getState();
       showSicknessBanner({ icon: s.sicknessIcon, name: s.sicknessName });
+    }
+    if (Game.isFireActive()) {
+      const s = Game.getState();
+      showFireBanner({ icon: s.hazards.fire.icon, name: s.hazards.fire.name });
     }
     setInterval(renderSky, 5000);
     setInterval(renderSeason, 60000);
@@ -171,6 +176,17 @@ const UI = (() => {
       if (Game.cureSickness()) {
         $('sickness-banner').classList.add('hidden');
         Effects.toast('医療キャンペーンで疫病を収束させた!', '💉');
+        Effects.confetti(window.innerWidth / 2, 60, 30);
+        updateTopbar();
+      }
+    });
+  }
+
+  function bindFire() {
+    $('fire-cure-btn').addEventListener('click', () => {
+      if (Game.cureFire()) {
+        $('fire-banner').classList.add('hidden');
+        Effects.toast('消防隊の活躍で鎮火させた!', '🚒');
         Effects.confetti(window.innerWidth / 2, 60, 30);
         updateTopbar();
       }
@@ -334,7 +350,16 @@ const UI = (() => {
       const card = document.createElement('div');
       card.className = 'card' + (affordable ? '' : ' disabled');
       const perEach = b.baseIncome * Game.buildingMultiplier(b.id) * Game.globalMultiplier();
-      const preventBadge = (b.prevention && b.prevention.sickness) ? ` <span class="district-badge" title="病気イベントの発生自体を未然に防ぐ確率(医療系施設が多いほど上昇、最大95%)">🛡️予防${Math.round(Game.sicknessPreventionChance() * 100)}%</span>` : '';
+      let preventBadge = '';
+      if (b.prevention && b.prevention.sickness) {
+        preventBadge += ` <span class="district-badge" title="病気イベントの発生自体を未然に防ぐ確率(医療系施設が多いほど上昇、最大95%)">🛡️病気予防${Math.round(Game.sicknessPreventionChance() * 100)}%</span>`;
+      }
+      if (b.prevention && b.prevention.fire) {
+        preventBadge += ` <span class="district-badge" title="火事の発生自体を未然に防ぐ確率(消防系施設が多いほど上昇、最大95%)">🧯火災予防${Math.round(Game.firePreventionChance() * 100)}%</span>`;
+      }
+      if (b.prevention && b.prevention.crime) {
+        preventBadge += ` <span class="district-badge" title="犯罪の発生自体を未然に防ぐ確率(交番が多いほど上昇、最大95%)">🚓防犯${Math.round(Game.crimePreventionChance() * 100)}%</span>`;
+      }
       card.innerHTML = `
         <div class="card-icon">${b.emoji}</div>
         <div class="card-body">
@@ -421,6 +446,9 @@ const UI = (() => {
         <div class="stats-item"><span>ゴールデンビル獲得</span><b>${s.goldenClicks}回</b></div>
         <div class="stats-item"><span>UFO遭遇</span><b>${s.ufoClicks}回</b></div>
         <div class="stats-item"><span>病気を未然に防いだ回数</span><b>${s.sicknessPrevented || 0}回</b></div>
+        <div class="stats-item"><span>火事を未然に防いだ回数</span><b>${(s.hazards && s.hazards.fire && s.hazards.fire.prevented) || 0}回</b></div>
+        <div class="stats-item"><span>犯罪を未然に防いだ回数</span><b>${s.crimePrevented || 0}回</b></div>
+        <div class="stats-item"><span>犯罪による被害総額</span><b>${formatNum(s.crimeStolenTotal || 0)}円</b></div>
         <div class="stats-item"><span>都市合併回数</span><b>${s.prestigeCount}回</b></div>
         <div class="stats-item"><span>名声ポイント</span><b>${s.famePoints}</b></div>
         <div class="stats-item"><span>プレイ時間</span><b>${hrs}時間${mins}分</b></div>
@@ -791,6 +819,23 @@ const UI = (() => {
       updateTopbar();
     } else if (evt.type === 'sickness-prevented') {
       Effects.toast('🏥 医療施設のおかげで疫病の流行を未然に防いだ!', '🏥');
+    } else if (evt.type === 'fire-start') {
+      showFireBanner(evt);
+      Effects.toast(`${evt.icon} ${evt.name}が発生した!`, evt.icon);
+      Effects.sound('error');
+      Effects.screenShake(6, 300);
+    } else if (evt.type === 'fire-end') {
+      $('fire-banner').classList.add('hidden');
+      if (!evt.cured) Effects.toast('🧯 火が消し止められた', '🧯');
+      updateTopbar();
+    } else if (evt.type === 'fire-prevented') {
+      Effects.toast('🧯 消防系施設のおかげで火事を未然に防いだ!', '🧯');
+    } else if (evt.type === 'crime-prevented') {
+      Effects.toast('🚓 交番のおかげで犯罪を未然に防いだ!', '🚓');
+    } else if (evt.type === 'crime-occurred') {
+      Effects.toast(`${evt.icon} ${evt.name}の被害…${formatNum(evt.stolen)}円が盗まれた`, evt.icon);
+      Effects.sound('error');
+      updateTopbar();
     } else if (evt.type === 'bgm-changed') {
       const audio = $('bgm-audio');
       const wasPlaying = !audio.paused;
@@ -817,6 +862,13 @@ const UI = (() => {
     $('sickness-text').textContent = `${evt.name}が流行中!幸福度が低下しています(病院で軽減)`;
     $('sickness-cure-btn').textContent = `💉 医療キャンペーン (${formatNum(Game.sicknessCureCost())}円)`;
     $('sickness-banner').classList.remove('hidden');
+  }
+
+  function showFireBanner(evt) {
+    $('fire-icon').textContent = evt.icon;
+    $('fire-text').textContent = `${evt.name}が発生中!幸福度が低下しています(消防系施設で軽減)`;
+    $('fire-cure-btn').textContent = `🚒 消防隊を出動 (${formatNum(Game.fireCureCost())}円)`;
+    $('fire-banner').classList.remove('hidden');
   }
 
   function positionGolden() {
@@ -861,6 +913,9 @@ const UI = (() => {
     if (activeTab === 'daily') renderDaily();
     if (Game.isSick() && !$('sickness-banner').classList.contains('hidden')) {
       $('sickness-cure-btn').textContent = `💉 医療キャンペーン (${formatNum(Game.sicknessCureCost())}円)`;
+    }
+    if (Game.isFireActive() && !$('fire-banner').classList.contains('hidden')) {
+      $('fire-cure-btn').textContent = `🚒 消防隊を出動 (${formatNum(Game.fireCureCost())}円)`;
     }
   }, 1000);
 

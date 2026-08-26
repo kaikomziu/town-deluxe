@@ -52,6 +52,12 @@ function defaultState() {
     sicknessSurvived: 0,
     sicknessCured: 0,
     sicknessPrevented: 0,
+    hazards: {
+      fire: { until: 0, severity: 0, name: '', icon: '🔥', survived: 0, cured: 0, prevented: 0 }
+    },
+    crimePrevented: 0,
+    crimeOccurred: 0,
+    crimeStolenTotal: 0,
     layout: [],
     muted: false,
     bgmMuted: false,
@@ -121,8 +127,9 @@ function loadGame() {
     } catch (e) {
       console.warn('施設/実績/アップグレード/街並み配置/名声ショップの読み込みに失敗しました', e);
     }
-    // 欠損フィールドを補完(将来のアップデートで施設が増えた場合など)
+    // 欠損フィールドを補完(将来のアップデートで施設や新しいハザード種別が増えた場合など)
     merged.buildings = Object.assign(def.buildings, merged.buildings || {});
+    merged.hazards = Object.assign({}, def.hazards, merged.hazards || {});
     return merged;
   } catch (e) {
     console.warn('セーブデータの読み込みに失敗しました', e);
