@@ -134,7 +134,13 @@ const Game = (() => {
       const mitigation = firePower() * 10;
       happiness -= Math.max(2, state.hazards.fire.severity - mitigation);
     }
-    state.population = pop;
+    // 人口は最大人口(町の拡張で引き上げ)まで。超過分は住みきれず、幸福度に軽いペナルティ
+    const cap = maxPopulation();
+    if (pop > cap) {
+      const overRatio = pop / cap - 1;
+      happiness -= Math.min(15, overRatio * 10);
+    }
+    state.population = Math.min(pop, cap);
     state.happiness = Math.max(0, Math.min(150, happiness));
   }
 
@@ -748,6 +754,34 @@ const Game = (() => {
     return fameOwnedItems().some((item) => item.effect.type === type);
   }
 
+  // --- 町の拡張(最大人口を引き上げる恒久アップグレード。資金で購入、都市合併でも失われない) ---
+  let maxPopulationCache = null;
+  function invalidateMaxPopulationCache() { maxPopulationCache = null; }
+  function maxPopulation() {
+    if (maxPopulationCache !== null) return maxPopulationCache;
+    let total = BASE_MAX_POPULATION;
+    (state.townExpansions || []).forEach((id) => {
+      const e = TOWN_EXPANSIONS_BY_ID.get(id);
+      if (e) total += e.popBonus;
+    });
+    maxPopulationCache = total;
+    return total;
+  }
+  function isTownExpansionOwned(id) { return (state.townExpansions || []).includes(id); }
+  function buyTownExpansion(id) {
+    const e = TOWN_EXPANSIONS_BY_ID.get(id);
+    if (!e) return false;
+    if (isTownExpansionOwned(id)) return false;
+    if (!canAfford(e.cost)) { Effects.sound('error'); return false; }
+    state.money -= e.cost;
+    state.townExpansions.push(id);
+    invalidateMaxPopulationCache();
+    recomputeStats();
+    Effects.sound('buy');
+    emit('event', { type: 'expansion-bought', expansion: e });
+    return true;
+  }
+
   // --- 都市合併(プレステージ) ---
   function prestigeThreshold() { return 1000000 * fameEffectMult('prestigeThresholdMult'); }
   function potentialFame() {
@@ -812,6 +846,7 @@ const Game = (() => {
     state = defaultState();
     invalidateUpgradeCaches();
     invalidateFameCache();
+    invalidateMaxPopulationCache();
     recomputeStats();
   }
 
@@ -833,6 +868,7 @@ const Game = (() => {
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
     fameAvailable, isFameShopTierUnlocked, isFameUpgradeOwned, buyFameUpgrade,
+    maxPopulation, isTownExpansionOwned, buyTownExpansion,
     toggleMute, toggleBgmMute, setBgmVolume, buyBgmTrack, selectBgm, doReset, saveNow: () => saveGame(state)
   };
 })();

@@ -189,6 +189,25 @@ function rankIndexFor(lifetimeMoney) {
   return idx;
 }
 
+// 最大人口の基礎値。施設で増える人口はこの上限まで(超えた分は幸福度に軽いペナルティ)。
+// 「町の拡張」を買うことで上限そのものを引き上げていく。
+const BASE_MAX_POPULATION = 500;
+const TOWN_EXPANSIONS = [
+  { id: 'expand_1',  cost: 500,              popBonus: 100,     name: '🏘️ 区画整理 I',     desc: '新しい住宅区画を整備し、最大人口が+100人される。' },
+  { id: 'expand_2',  cost: 5000,             popBonus: 300,     name: '🏘️ 区画整理 II',    desc: '最大人口がさらに+300人される。' },
+  { id: 'expand_3',  cost: 50000,            popBonus: 800,     name: '🏘️ 区画整理 III',   desc: '最大人口がさらに+800人される。' },
+  { id: 'expand_4',  cost: 500000,           popBonus: 2000,    name: '🌆 都市計画 I',      desc: '道路網を整備し、最大人口が+2,000人される。' },
+  { id: 'expand_5',  cost: 5000000,          popBonus: 5000,    name: '🌆 都市計画 II',     desc: '最大人口がさらに+5,000人される。' },
+  { id: 'expand_6',  cost: 50000000,         popBonus: 12000,   name: '🌆 都市計画 III',    desc: '最大人口がさらに+12,000人される。' },
+  { id: 'expand_7',  cost: 500000000,        popBonus: 30000,   name: '🏙️ 広域開発 I',     desc: '近隣エリアを開発し、最大人口が+30,000人される。' },
+  { id: 'expand_8',  cost: 5000000000,       popBonus: 70000,   name: '🏙️ 広域開発 II',    desc: '最大人口がさらに+70,000人される。' },
+  { id: 'expand_9',  cost: 50000000000,      popBonus: 150000,  name: '🌍 大都市圏構想',    desc: '広域交通網を整備し、最大人口が+150,000人される。' },
+  { id: 'expand_10', cost: 500000000000,     popBonus: 350000,  name: '🌌 メガシティ計画',  desc: '最大人口が+350,000人される。' },
+  { id: 'expand_11', cost: 5000000000000,    popBonus: 800000,  name: '🚀 軌道都市構想',    desc: '軌道上にも生活圏を広げ、最大人口が+800,000人される。' },
+  { id: 'expand_12', cost: 50000000000000,   popBonus: 2000000, name: '🌠 星間都市連邦',    desc: '最大人口が+2,000,000人される。' }
+];
+const TOWN_EXPANSIONS_BY_ID = new Map(TOWN_EXPANSIONS.map((e) => [e.id, e]));
+
 // 名声ショップ: 都市合併で得た名声ポイントを使って買う恒久アップグレード(合併しても失われない)。
 // tierは解放に必要な累計都市合併回数(FAME_SHOP_TIER_REQUIREMENTのインデックスに対応)で、
 // 周回(都市合併)を重ねるほど新しいティアが開放されていくエンドコンテンツ。
@@ -455,6 +474,14 @@ function generateAchievements() {
     list.push({ id: 'ach_bgm_collector', name: '🎶 BGMコレクター', desc: '全てのBGMトラックを解放する', check: (s) => (s.bgmUnlocked || []).length >= BGM_TRACKS.length });
   }
   list.push({ id: 'ach_fame_shop_complete', name: '💎 名声の頂点', desc: '名声ショップの全アップグレードを取得する', check: (s) => (s.fameShopUpgrades || []).length >= FAME_SHOP.length });
+  [1, 3, 6, 9].forEach((v) => {
+    list.push({
+      id: `ach_expansion_${v}`, name: `🏘️ 町の拡張${v}回`,
+      desc: `町の拡張を${v}回行う`,
+      check: (s) => (s.townExpansions || []).length >= v
+    });
+  });
+  list.push({ id: 'ach_expansion_complete', name: '🌌 究極の大都市', desc: '町の拡張を全て行い、最大人口を極限まで引き上げる', check: (s) => (s.townExpansions || []).length >= TOWN_EXPANSIONS.length });
   BGM_TRACKS.filter((t) => t.price > 0).forEach((t) => {
     list.push({ id: `ach_bgm_${t.id}`, name: `🎵 BGM『${t.name}』解放`, desc: `BGM『${t.name}』を購入して解放する`, check: (s) => (s.bgmUnlocked || []).includes(t.id) });
   });

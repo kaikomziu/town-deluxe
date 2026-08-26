@@ -378,7 +378,7 @@ const UI = (() => {
     const s = Game.getState();
     $('stat-money').textContent = formatNum(s.money) + '円';
     $('stat-income').textContent = formatNum(Game.incomePerSec()) + '円/秒';
-    $('stat-pop').textContent = formatNum(s.population) + '人';
+    $('stat-pop').textContent = `${formatNum(s.population)}/${formatNum(Game.maxPopulation())}人`;
     $('stat-happiness').textContent = Math.round(s.happiness) + '%';
     const happinessBoostPct = Math.round(s.happiness); // happinessMult = 1 + happiness/100 なので、boost%は幸福度の値と同じ
     $('stat-happiness-wrap').title = `幸福度による収入ブースト: +${happinessBoostPct}%`;
@@ -433,14 +433,58 @@ const UI = (() => {
     const s = Game.getState();
     const el = $('tab-upgrade');
     el.innerHTML = '';
+    el.appendChild(renderTownExpansionSection());
+    const heading = document.createElement('div');
+    heading.className = 'daily-heading';
+    heading.textContent = '⚡ 施設アップグレード';
+    el.appendChild(heading);
     const unlocked = UPGRADES.filter((u) => Game.isUpgradeUnlocked(u) && !s.upgrades.includes(u.id));
     const locked = UPGRADES.filter((u) => !Game.isUpgradeUnlocked(u) && !s.upgrades.includes(u.id));
     if (unlocked.length === 0 && locked.length === 0) {
-      el.innerHTML = '<p class="empty">全てのアップグレードを取得しました!すごい!</p>';
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = '全てのアップグレードを取得しました!すごい!';
+      el.appendChild(empty);
       return;
     }
     unlocked.sort((a, b) => a.cost - b.cost).forEach((u) => el.appendChild(upgradeCard(u, true)));
     locked.slice(0, 6).forEach((u) => el.appendChild(upgradeCard(u, false)));
+  }
+
+  function renderTownExpansionSection() {
+    const s = Game.getState();
+    const wrap = document.createElement('div');
+    const heading = document.createElement('div');
+    heading.className = 'daily-heading';
+    heading.textContent = `🏘️ 町の拡張(最大人口: ${formatNum(s.population)} / ${formatNum(Game.maxPopulation())}人)`;
+    wrap.appendChild(heading);
+    TOWN_EXPANSIONS.forEach((e) => wrap.appendChild(townExpansionCard(e)));
+    return wrap;
+  }
+
+  function townExpansionCard(e) {
+    const s = Game.getState();
+    const owned = Game.isTownExpansionOwned(e.id);
+    const affordable = !owned && s.money >= e.cost;
+    const card = document.createElement('div');
+    card.className = 'card upgrade-card' + (owned ? ' owned' : (affordable ? '' : ' disabled'));
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="card-title">${e.name}</div>
+        <div class="card-desc">${e.desc}</div>
+      </div>
+      ${owned ? '<span class="owned-badge">✅取得済み</span>' : `<button class="buy-btn" ${affordable ? '' : 'disabled'}>${formatNum(e.cost)}円</button>`}
+    `;
+    if (!owned) {
+      card.querySelector('.buy-btn').addEventListener('click', () => {
+        if (Game.buyTownExpansion(e.id)) {
+          Effects.toast(`${e.name} で最大人口が+${formatNum(e.popBonus)}人!`, '🏘️');
+          renderUpgrades();
+          updateTopbar();
+        }
+      });
+    }
+    return card;
   }
 
   function upgradeCard(u, unlocked) {
@@ -490,7 +534,8 @@ const UI = (() => {
     el.innerHTML = `
       <div class="stats-grid">
         <div class="stats-item"><span>累計獲得資金</span><b>${formatNum(s.lifetimeMoney)}円</b></div>
-        <div class="stats-item"><span>現在の人口</span><b>${formatNum(s.population)}人</b></div>
+        <div class="stats-item"><span>現在の人口 / 最大人口</span><b>${formatNum(s.population)} / ${formatNum(Game.maxPopulation())}人</b></div>
+        <div class="stats-item"><span>町の拡張回数</span><b>${(s.townExpansions || []).length} / ${TOWN_EXPANSIONS.length}回</b></div>
         <div class="stats-item"><span>幸福度(収入ブースト)</span><b>${Math.round(s.happiness)}% <span class="stats-sub">(収入+${Math.round(s.happiness)}%)</span></b></div>
         <div class="stats-item"><span>クリック回数</span><b>${s.totalClicks.toLocaleString()}回</b></div>
         <div class="stats-item"><span>ゴールデンビル獲得</span><b>${s.goldenClicks}回</b></div>
