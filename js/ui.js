@@ -3,6 +3,7 @@
 const UI = (() => {
   let qty = 1;
   let buyAllOrder = 'cheap';
+  let upgradeOrder = 'cheap';
   let activeTab = 'build';
 
   function $(id) { return document.getElementById(id); }
@@ -23,6 +24,7 @@ const UI = (() => {
     bindBgm();
     bindBgmPreviewEnd();
     bindPedestrianToggle();
+    bindBuyToastToggle();
     renderSky();
     renderClouds();
     renderSeason();
@@ -468,10 +470,7 @@ const UI = (() => {
     el.innerHTML = '';
     el.appendChild(renderTownExpansionSection());
     el.appendChild(renderHappinessExpansionSection());
-    const heading = document.createElement('div');
-    heading.className = 'daily-heading';
-    heading.textContent = '⚡ 施設アップグレード';
-    el.appendChild(heading);
+    el.appendChild(renderUpgradeToolbar());
     const unlocked = UPGRADES.filter((u) => Game.isUpgradeUnlocked(u) && !s.upgrades.includes(u.id));
     const locked = UPGRADES.filter((u) => !Game.isUpgradeUnlocked(u) && !s.upgrades.includes(u.id));
     if (unlocked.length === 0 && locked.length === 0) {
@@ -483,6 +482,40 @@ const UI = (() => {
     }
     unlocked.sort((a, b) => a.cost - b.cost).forEach((u) => el.appendChild(upgradeCard(u, true)));
     locked.slice(0, 6).forEach((u) => el.appendChild(upgradeCard(u, false)));
+  }
+
+  function renderUpgradeToolbar() {
+    const wrap = document.createElement('div');
+    const heading = document.createElement('div');
+    heading.className = 'daily-heading';
+    heading.textContent = '⚡ 施設アップグレード';
+    wrap.appendChild(heading);
+    const row = document.createElement('div');
+    row.className = 'buy-all-row';
+    row.innerHTML = `
+      <button data-order="cheap" class="order-btn upg-order-btn${upgradeOrder === 'cheap' ? ' active' : ''}">安い順</button>
+      <button data-order="expensive" class="order-btn upg-order-btn${upgradeOrder === 'expensive' ? ' active' : ''}">高い順</button>
+      <button data-order="even" class="order-btn upg-order-btn${upgradeOrder === 'even' ? ' active' : ''}">平等</button>
+      <button id="buy-all-upgrades-btn" class="buy-all-btn" title="今買えるアップグレードを、選んだ順序でまとめて購入します">🛒 全部買う</button>
+    `;
+    row.querySelectorAll('.upg-order-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        upgradeOrder = btn.dataset.order;
+        renderUpgrades();
+      });
+    });
+    row.querySelector('#buy-all-upgrades-btn').addEventListener('click', () => {
+      const result = Game.buyAllUpgrades(upgradeOrder);
+      if (result.bought.length > 0) {
+        if (Game.getShowBuyToasts()) Effects.toast(`⚡ アップグレードを${result.bought.length}件購入(${formatNum(result.totalCost)}円)`, '⚡');
+        renderUpgrades();
+        updateTopbar();
+      } else {
+        Effects.toast('😢 今買えるアップグレードがありません', '💸');
+      }
+    });
+    wrap.appendChild(row);
+    return wrap;
   }
 
   function renderTownExpansionSection() {
@@ -512,7 +545,7 @@ const UI = (() => {
     if (!owned) {
       card.querySelector('.buy-btn').addEventListener('click', () => {
         if (Game.buyTownExpansion(e.id)) {
-          Effects.toast(`${e.name} で最大人口が+${formatNum(e.popBonus)}人!`, '🏘️');
+          if (Game.getShowBuyToasts()) Effects.toast(`${e.name} で最大人口が+${formatNum(e.popBonus)}人!`, '🏘️');
           renderUpgrades();
           updateTopbar();
         }
@@ -548,7 +581,7 @@ const UI = (() => {
     if (!owned) {
       card.querySelector('.buy-btn').addEventListener('click', () => {
         if (Game.buyHappinessExpansion(e.id)) {
-          Effects.toast(`${e.name} で幸福度の上限が+${formatNum(e.capBonus)}!`, '😊');
+          if (Game.getShowBuyToasts()) Effects.toast(`${e.name} で幸福度の上限が+${formatNum(e.capBonus)}!`, '😊');
           renderUpgrades();
           updateTopbar();
         }
@@ -572,7 +605,7 @@ const UI = (() => {
     if (unlocked) {
       card.querySelector('.buy-btn').addEventListener('click', () => {
         if (Game.buyUpgrade(u.id)) {
-          Effects.toast(`${u.name} を取得!`, '⚡');
+          if (Game.getShowBuyToasts()) Effects.toast(`${u.name} を取得!`, '⚡');
           renderUpgrades();
         }
       });
@@ -695,7 +728,7 @@ const UI = (() => {
     if (tierUnlocked && !owned) {
       card.querySelector('.buy-btn').addEventListener('click', () => {
         if (Game.buyFameUpgrade(item.id)) {
-          Effects.toast(`${item.name} を取得!`, '💎');
+          if (Game.getShowBuyToasts()) Effects.toast(`${item.name} を取得!`, '💎');
           renderFameShop();
           updateTopbar();
         }
@@ -904,6 +937,13 @@ const UI = (() => {
     $('pedestrian-toggle').addEventListener('change', () => {
       Game.togglePedestrians();
       renderPedestrianVisibility();
+    });
+  }
+
+  function bindBuyToastToggle() {
+    $('buy-toast-toggle').checked = Game.getShowBuyToasts();
+    $('buy-toast-toggle').addEventListener('change', () => {
+      Game.toggleBuyToasts();
     });
   }
 

@@ -269,6 +269,32 @@ const Game = (() => {
     return true;
   }
 
+  // --- アップグレード一括購入: 一括購入(施設)と同じ3種類の順序に対応 ---
+  // アップグレードは1個ずつしか買えない(数量の概念がない)ため、購入順=どれを優先して買うかがそのまま結果を左右する。
+  //   cheap(安い順)     : 安い順に並べ、残り資金の全額を使って前から買えるだけ買う
+  //   expensive(高い順) : 高い順に並べ、残り資金の全額を使って前から買えるだけ買う
+  //   even(平等)        : 買える候補の数で資金を均等割りし、その持ち分に収まるものだけ買う
+  function buyAllUpgrades(mode) {
+    mode = mode || 'cheap';
+    const candidates = UPGRADES.filter((u) => isUpgradeUnlocked(u) && !state.upgrades.includes(u.id));
+    const order = candidates.slice().sort((a, b) => a.cost - b.cost);
+    if (mode === 'expensive') order.reverse();
+    const evenShare = mode === 'even' && candidates.length > 0 ? state.money / candidates.length : null;
+    const bought = [];
+    let totalCost = 0;
+    order.forEach((u) => {
+      const budget = mode === 'even' ? evenShare : state.money;
+      if (u.cost > budget) return;
+      if (buyUpgrade(u.id, { silent: true })) {
+        bought.push(u);
+        totalCost += u.cost;
+      }
+    });
+    Effects.sound(bought.length > 0 ? 'buy' : 'error');
+    emit('event', { type: 'buy-all-upgrades', bought, totalCost, mode });
+    return { bought, totalCost };
+  }
+
   function manualClick() {
     const now = Date.now();
     comboCount++;
@@ -740,6 +766,13 @@ const Game = (() => {
     return state.showPedestrians;
   }
 
+  // アップグレード購入時の「◯◯を取得!」系トースト。連続購入を邪魔しないようオフにできる
+  function toggleBuyToasts() {
+    state.showBuyToasts = !state.showBuyToasts;
+    return state.showBuyToasts;
+  }
+  function getShowBuyToasts() { return state.showBuyToasts !== false; } // 未設定(旧セーブ)はON扱い
+
   // --- 実績 ---
   // 実績が数百件規模になったため、毎回ACHIEVEMENTS.length分 state.achievements.includes()
   // (これもO(n))を回すと二重ループで重くなる。所持済みIDをSetにキャッシュしO(1)判定にする。
@@ -936,7 +969,7 @@ const Game = (() => {
     init, on,
     getState: () => state,
     buildingCount, buildingMultiplier, clickMultiplier, globalMultiplier, incomePerSec,
-    buyBuilding, buyAllAffordable, buyUpgrade, isUpgradeUnlocked, manualClick,
+    buyBuilding, buyAllAffordable, buyUpgrade, buyAllUpgrades, isUpgradeUnlocked, manualClick,
     getGolden: () => goldenBuilding, clickGolden,
     getUfo: () => ufo, clickUfo,
     isRaining: () => Date.now() < rainUntil,
@@ -948,6 +981,7 @@ const Game = (() => {
     getRank: () => RANK_TIERS[rankIndexFor(state.lifetimeMoney)],
     getDaily: () => state.daily, claimMission,
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,
+    getShowBuyToasts, toggleBuyToasts,
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
     fameAvailable, isFameShopTierUnlocked, isFameUpgradeOwned, buyFameUpgrade,
     maxPopulation, isTownExpansionOwned, buyTownExpansion,

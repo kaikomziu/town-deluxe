@@ -68,6 +68,7 @@ function defaultState() {
     bgmUnlocked: ['hitoyasumi'],
     currentBgm: 'hitoyasumi',
     showPedestrians: true,
+    showBuyToasts: true,
     districtBonusEverActive: false,
     seasonalComplaintsResolved: [],
     dailyMissionsClaimed: 0,
