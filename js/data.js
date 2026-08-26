@@ -425,6 +425,135 @@ const MISSION_POOL = [
   { id: 'upgrade',     metric: 'upgradesToday',        target: 1,    icon: '⚡', tier: 1, label: (t) => `アップグレードを${t}個購入する` }
 ];
 
+// --- ミッション(チュートリアル〜マイルストーン、デイリーとは別枠の恒久クエスト) ---
+// デイリーミッションと違いリセットされない。段階(stage)ごとに区切られ、各stageのミッションを
+// 70%以上クリアすると次のstageが解放される(序盤の操作案内→中盤〜終盤の到達目標、と難度が上がる)。
+function totalBuildingsOwned(s) {
+  return Object.values(s.buildings || {}).reduce((a, b) => a + b, 0);
+}
+function distinctBuildingsOwned(s) {
+  return Object.values(s.buildings || {}).filter((n) => n >= 1).length;
+}
+function happinessCapFromState(s) {
+  let total = BASE_HAPPINESS_CAP;
+  (s.happinessExpansions || []).forEach((id) => {
+    const e = HAPPINESS_EXPANSIONS_BY_ID.get(id);
+    if (e) total += e.capBonus;
+  });
+  return total;
+}
+const QUESTS = [
+  // Stage 1: はじめの一歩(基本操作のチュートリアル)
+  { id: 'm1_click', stage: 1, icon: '👆', name: '町役場をクリックしよう', desc: '町役場をクリックして最初の資金を稼ぐ', check: (s) => (s.totalClicks || 0) >= 1 },
+  { id: 'm1_house', stage: 1, icon: '🏠', name: '最初の家を建てよう', desc: '施設タブで「家」を1つ購入する', check: (s) => (s.buildings.house || 0) >= 1 },
+  { id: 'm1_petition', stage: 1, icon: '😊', name: '陳情に応えてみよう', desc: '町民の声(陳情)に1回応える', check: (s) => (s.petitionsAnswered || 0) >= 1 },
+  { id: 'm1_upgrade_tab', stage: 1, icon: '⚡', name: '強化タブを開いてみよう', desc: '「強化」タブを開いて中身を見る', check: (s) => !!(s.uiFlags && s.uiFlags.opened_tab_upgrade) },
+  { id: 'm1_ach_tab', stage: 1, icon: '🏆', name: '実績タブを開いてみよう', desc: '「実績」タブを開いて中身を見る', check: (s) => !!(s.uiFlags && s.uiFlags.opened_tab_achievement) },
+  { id: 'm1_stats_tab', stage: 1, icon: '📊', name: '統計タブを開いてみよう', desc: '「統計」タブを開いて中身を見る', check: (s) => !!(s.uiFlags && s.uiFlags.opened_tab_stats) },
+  { id: 'm1_daily_tab', stage: 1, icon: '📅', name: 'デイリータブを開いてみよう', desc: '「デイリー」タブを開いて中身を見る', check: (s) => !!(s.uiFlags && s.uiFlags.opened_tab_daily) },
+  { id: 'm1_bgm', stage: 1, icon: '🎼', name: 'BGMを選んでみよう', desc: 'フッターの「BGM選択」を開く', check: (s) => !!(s.uiFlags && s.uiFlags.opened_bgm_modal) },
+  // Stage 2: 町の基盤づくり
+  { id: 'm2_buildings10', stage: 2, icon: '🏘️', name: '施設を合計10個所有しよう', desc: '種類を問わず施設を合計10個所有する', check: (s) => totalBuildingsOwned(s) >= 10 },
+  { id: 'm2_types5', stage: 2, icon: '🏪', name: '5種類の施設を所有しよう', desc: '異なる施設を5種類以上所有する', check: (s) => distinctBuildingsOwned(s) >= 5 },
+  { id: 'm2_money1000', stage: 2, icon: '💰', name: '累計1,000円稼ごう', desc: '累計獲得資金が1,000円に到達する', check: (s) => s.lifetimeMoney >= 1000 },
+  { id: 'm2_upgrade1', stage: 2, icon: '⚡', name: '初めてのアップグレードを購入しよう', desc: '施設アップグレードを1個購入する', check: (s) => (s.upgrades || []).length >= 1 },
+  { id: 'm2_golden', stage: 2, icon: '✨', name: 'ゴールデンビルをクリックしよう', desc: '出現するゴールデンビルを1回クリックする', check: (s) => (s.goldenClicks || 0) >= 1 },
+  { id: 'm2_ufo', stage: 2, icon: '🛸', name: 'UFOをクリックしよう', desc: '出現するUFOを1回クリックする', check: (s) => (s.ufoClicks || 0) >= 1 },
+  { id: 'm2_prestige_tab', stage: 2, icon: '🌟', name: '合併タブを見てみよう', desc: '「合併」タブを開いて中身を見る', check: (s) => !!(s.uiFlags && s.uiFlags.opened_tab_prestige) },
+  { id: 'm2_buyall', stage: 2, icon: '🛒', name: '「全部買う」を使ってみよう', desc: '施設タブの「全部買う」ボタンを使う', check: (s) => !!(s.uiFlags && s.uiFlags.used_buy_all) },
+  // Stage 3: 経済成長
+  { id: 'm3_money1e5', stage: 3, icon: '💰', name: '累計10万円稼ごう', desc: '累計獲得資金が10万円に到達する', check: (s) => s.lifetimeMoney >= 100000 },
+  { id: 'm3_buildings50', stage: 3, icon: '🏘️', name: '施設を合計50個所有しよう', desc: '種類を問わず施設を合計50個所有する', check: (s) => totalBuildingsOwned(s) >= 50 },
+  { id: 'm3_types20', stage: 3, icon: '🏪', name: '20種類の施設を所有しよう', desc: '異なる施設を20種類以上所有する', check: (s) => distinctBuildingsOwned(s) >= 20 },
+  { id: 'm3_upgrade5', stage: 3, icon: '⚡', name: 'アップグレードを5個購入しよう', desc: '施設アップグレードを合計5個購入する', check: (s) => (s.upgrades || []).length >= 5 },
+  { id: 'm3_dailymission', stage: 3, icon: '🎯', name: 'デイリーミッションを達成しよう', desc: 'デイリーミッションを1つ達成して受け取る', check: (s) => (s.dailyMissionsClaimed || 0) >= 1 },
+  { id: 'm3_sickness', stage: 3, icon: '🏥', name: '病気を乗り越えよう', desc: '疫病の流行を1回乗り越える(自然収束・治療どちらでも可)', check: (s) => (s.sicknessSurvived || 0) + (s.sicknessCured || 0) >= 1 },
+  { id: 'm3_fire', stage: 3, icon: '🚒', name: '火事を乗り越えよう', desc: '火事を1回乗り越える(自然鎮火・消防隊どちらでも可)', check: (s) => ((s.hazards && s.hazards.fire && s.hazards.fire.survived) || 0) + ((s.hazards && s.hazards.fire && s.hazards.fire.cured) || 0) >= 1 },
+  { id: 'm3_crime', stage: 3, icon: '🚓', name: '空き巣を経験しよう', desc: '空き巣・犯罪イベントを1回経験する(未然に防いだ場合も可)', check: (s) => (s.crimeOccurred || 0) + (s.crimePrevented || 0) >= 1 },
+  // Stage 4: 拡張と発展
+  { id: 'm4_townexp', stage: 4, icon: '🏘️', name: '町の拡張を行おう', desc: '強化タブで「町の拡張」を1回購入する', check: (s) => (s.townExpansions || []).length >= 1 },
+  { id: 'm4_happyexp', stage: 4, icon: '😊', name: '幸福度政策を行おう', desc: '強化タブで「幸福度政策」を1回購入する', check: (s) => (s.happinessExpansions || []).length >= 1 },
+  { id: 'm4_money1e6', stage: 4, icon: '💰', name: '累計100万円稼ごう', desc: '累計獲得資金が100万円に到達する', check: (s) => s.lifetimeMoney >= 1000000 },
+  { id: 'm4_prestige1', stage: 4, icon: '🌟', name: '初めて都市合併しよう', desc: '都市合併を1回行う', check: (s) => (s.prestigeCount || 0) >= 1 },
+  { id: 'm4_fameshop1', stage: 4, icon: '💎', name: '名声ショップでアイテムを買おう', desc: '名声ショップでアップグレードを1個購入する', check: (s) => (s.fameShopUpgrades || []).length >= 1 },
+  { id: 'm4_buildings200', stage: 4, icon: '🏘️', name: '施設を合計200個所有しよう', desc: '種類を問わず施設を合計200個所有する', check: (s) => totalBuildingsOwned(s) >= 200 },
+  { id: 'm4_allbuildings', stage: 4, icon: '🏙️', name: '全ての施設を1つ以上所有しよう', desc: 'BUILDINGS全種類をコンプリートする', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 1) },
+  { id: 'm4_login3', stage: 4, icon: '📅', name: '連続ログイン3日を達成しよう', desc: '3日連続でプレイする', check: (s) => (s.loginStreak || 0) >= 3 },
+  // Stage 5: 更なる高み
+  { id: 'm5_money1e8', stage: 5, icon: '💰', name: '累計1億円稼ごう', desc: '累計獲得資金が1億円に到達する', check: (s) => s.lifetimeMoney >= 100000000 },
+  { id: 'm5_prestige5', stage: 5, icon: '🌟', name: '都市合併を5回行おう', desc: '都市合併の累計回数が5回に到達する', check: (s) => (s.prestigeCount || 0) >= 5 },
+  { id: 'm5_autobuy', stage: 5, icon: '🤖', name: '執事の自動購入を解放しよう', desc: '名声ショップ「執事の自動購入」を取得する', check: (s) => (s.fameShopUpgrades || []).includes('fame_autobuy') },
+  { id: 'm5_offline', stage: 5, icon: '🌙', name: 'オフライン収益を延長しよう', desc: '名声ショップ「越境オフライン協定」を取得する', check: (s) => (s.fameShopUpgrades || []).includes('fame_offline_1') },
+  { id: 'm5_buildings1000', stage: 5, icon: '🏘️', name: '施設を合計1,000個所有しよう', desc: '種類を問わず施設を合計1,000個所有する', check: (s) => totalBuildingsOwned(s) >= 1000 },
+  { id: 'm5_happy100', stage: 5, icon: '😊', name: '幸福度100%を達成しよう', desc: '幸福度を100%以上にする', check: (s) => s.happiness >= 100 },
+  { id: 'm5_types50', stage: 5, icon: '🏪', name: '50種類の施設を所有しよう', desc: '異なる施設を50種類以上所有する', check: (s) => distinctBuildingsOwned(s) >= 50 },
+  { id: 'm5_settings', stage: 5, icon: '⚙️', name: '設定を開いてみよう', desc: 'フッターの「設定」を開く', check: (s) => !!(s.uiFlags && s.uiFlags.opened_settings) },
+  // Stage 6: 名声への道
+  { id: 'm6_money1e10', stage: 6, icon: '💰', name: '累計100億円稼ごう', desc: '累計獲得資金が100億円に到達する', check: (s) => s.lifetimeMoney >= 10000000000 },
+  { id: 'm6_prestige15', stage: 6, icon: '🌟', name: '都市合併を15回行おう', desc: '都市合併の累計回数が15回に到達する(名声ショップTier4解放)', check: (s) => (s.prestigeCount || 0) >= 15 },
+  { id: 'm6_fameshop10', stage: 6, icon: '💎', name: '名声ショップを10個購入しよう', desc: '名声ショップのアップグレードを合計10個購入する', check: (s) => (s.fameShopUpgrades || []).length >= 10 },
+  { id: 'm6_buildings2000', stage: 6, icon: '🏘️', name: '施設を合計2,000個所有しよう', desc: '種類を問わず施設を合計2,000個所有する', check: (s) => totalBuildingsOwned(s) >= 2000 },
+  { id: 'm6_expansion_all', stage: 6, icon: '🏘️', name: '町の拡張を全て行おう', desc: '町の拡張(全22段階)をコンプリートする', check: (s) => (s.townExpansions || []).length >= TOWN_EXPANSIONS.length },
+  { id: 'm6_happyexp_all', stage: 6, icon: '😊', name: '幸福度政策を全て行おう', desc: '幸福度政策(全22段階)をコンプリートする', check: (s) => (s.happinessExpansions || []).length >= HAPPINESS_EXPANSIONS.length },
+  { id: 'm6_ach50', stage: 6, icon: '🏆', name: '実績を50個達成しよう', desc: '実績の達成数が50個に到達する', check: (s) => (s.achievements || []).length >= 50 },
+  { id: 'm6_types90', stage: 6, icon: '🏪', name: '90種類の施設を所有しよう', desc: '異なる施設を90種類以上所有する', check: (s) => distinctBuildingsOwned(s) >= 90 },
+  // Stage 7: 銀河評議会
+  { id: 'm7_money1e14', stage: 7, icon: '💰', name: '累計100兆円稼ごう', desc: '累計獲得資金が100兆円に到達する', check: (s) => s.lifetimeMoney >= 100000000000000 },
+  { id: 'm7_prestige30', stage: 7, icon: '🌟', name: '都市合併を30回行おう', desc: '都市合併の累計回数が30回に到達する(名声ショップTier5解放)', check: (s) => (s.prestigeCount || 0) >= 30 },
+  { id: 'm7_types_all', stage: 7, icon: '🏪', name: '全ての施設を所有しよう', desc: `全${BUILDINGS.length}種類の施設をコンプリートする`, check: (s) => distinctBuildingsOwned(s) >= BUILDINGS.length },
+  { id: 'm7_ach200', stage: 7, icon: '🏆', name: '実績を200個達成しよう', desc: '実績の達成数が200個に到達する', check: (s) => (s.achievements || []).length >= 200 },
+  { id: 'm7_buildings10000', stage: 7, icon: '🏘️', name: '施設を合計10,000個所有しよう', desc: '種類を問わず施設を合計10,000個所有する', check: (s) => totalBuildingsOwned(s) >= 10000 },
+  { id: 'm7_balanced10', stage: 7, icon: '⚖️', name: '全ての施設を10個以上ずつ所有しよう', desc: 'バランスよく全施設を育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 10) },
+  { id: 'm7_fameshop25', stage: 7, icon: '💎', name: '名声ショップを25個購入しよう', desc: '名声ショップのアップグレードを合計25個購入する', check: (s) => (s.fameShopUpgrades || []).length >= 25 },
+  { id: 'm7_money_archive', stage: 7, icon: '📜', name: '永劫の書庫を超える資金を稼ごう', desc: '累計獲得資金が45京円(4.5×10^17)に到達する', check: (s) => s.lifetimeMoney >= 450000000000000000 },
+  // Stage 8: 第二部の入口
+  { id: 'm8_dream', stage: 8, icon: '🌙', name: '「夢想収集庁」を建てよう', desc: '第二部最初の施設を1つ所有する', check: (s) => (s.buildings.dream_archive || 0) >= 1 },
+  { id: 'm8_money1e20', stage: 8, icon: '💰', name: '累計1垓円を突破しよう', desc: '累計獲得資金が1垓円(10^20)に到達する', check: (s) => s.lifetimeMoney >= 1e20 },
+  { id: 'm8_prestige50', stage: 8, icon: '🌟', name: '都市合併を50回行おう', desc: '都市合併の累計回数が50回に到達する(名声ショップTier6解放)', check: (s) => (s.prestigeCount || 0) >= 50 },
+  { id: 'm8_fameshop40', stage: 8, icon: '💎', name: '名声ショップを40個購入しよう', desc: '名声ショップのアップグレードを合計40個購入する', check: (s) => (s.fameShopUpgrades || []).length >= 40 },
+  { id: 'm8_balanced50', stage: 8, icon: '🌈', name: '全ての施設を50個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 50) },
+  { id: 'm8_ach500', stage: 8, icon: '🏆', name: '実績を500個達成しよう', desc: '実績の達成数が500個に到達する', check: (s) => (s.achievements || []).length >= 500 },
+  { id: 'm8_buildings50000', stage: 8, icon: '🏘️', name: '施設を合計50,000個所有しよう', desc: '種類を問わず施設を合計50,000個所有する', check: (s) => totalBuildingsOwned(s) >= 50000 },
+  { id: 'm8_displaymode', stage: 8, icon: '🚫', name: '街並みの表示設定を試してみよう', desc: '設定から街並みの建物表示モードを切り替える', check: (s) => !!(s.uiFlags && s.uiFlags.used_building_display_mode) },
+  // Stage 9: 無限への挑戦
+  { id: 'm9_next_universe', stage: 9, icon: '🌌', name: '「次なる宇宙の種」を建てよう', desc: '現時点で最も新しい施設を1つ所有する', check: (s) => (s.buildings.next_universe_seed || 0) >= 1 },
+  { id: 'm9_money1e28', stage: 9, icon: '💰', name: '累計1穣円を突破しよう', desc: '累計獲得資金が1穣円(10^28)に到達する', check: (s) => s.lifetimeMoney >= 1e28 },
+  { id: 'm9_prestige110', stage: 9, icon: '🌟', name: '都市合併を110回行おう', desc: '都市合併の累計回数が110回に到達する(名声ショップTier8解放)', check: (s) => (s.prestigeCount || 0) >= 110 },
+  { id: 'm9_balanced200', stage: 9, icon: '🌟', name: '全ての施設を200個以上ずつ所有しよう', desc: 'バランスよく全施設をさらに育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 200) },
+  { id: 'm9_ach1000', stage: 9, icon: '🏆', name: '実績を1,000個達成しよう', desc: '実績の達成数が1,000個に到達する', check: (s) => (s.achievements || []).length >= 1000 },
+  { id: 'm9_fameshop70', stage: 9, icon: '💎', name: '名声ショップを70個購入しよう', desc: '名声ショップのアップグレードを合計70個購入する', check: (s) => (s.fameShopUpgrades || []).length >= 70 },
+  { id: 'm9_buildings200000', stage: 9, icon: '🏘️', name: '施設を合計200,000個所有しよう', desc: '種類を問わず施設を合計200,000個所有する', check: (s) => totalBuildingsOwned(s) >= 200000 },
+  { id: 'm9_happycap1000', stage: 9, icon: '😊', name: '幸福度の上限を1,000%まで引き上げよう', desc: '幸福度政策を重ねて上限を引き上げる', check: (s) => happinessCapFromState(s) >= 1000 },
+  // Stage 10: 究極完全都市(最終段階)
+  { id: 'm10_balanced1000', stage: 10, icon: '👑', name: '全ての施設を1,000個以上ずつ所有しよう', desc: '真の完全制覇へ向けて、全施設を極限まで育てる', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 1000) },
+  { id: 'm10_prestige230', stage: 10, icon: '🌟', name: '都市合併を230回行おう', desc: '都市合併の累計回数が230回に到達する(名声ショップTier10解放)', check: (s) => (s.prestigeCount || 0) >= 230 },
+  { id: 'm10_prestige320', stage: 10, icon: '🌟', name: '都市合併を320回行おう', desc: '都市合併の累計回数が320回に到達する(名声ショップ最終Tier解放)', check: (s) => (s.prestigeCount || 0) >= 320 },
+  { id: 'm10_fameshop_all', stage: 10, icon: '💎', name: '名声ショップを全て購入しよう', desc: `名声ショップの全${FAME_SHOP.length}アイテムをコンプリートする`, check: (s) => (s.fameShopUpgrades || []).length >= FAME_SHOP.length },
+  { id: 'm10_ach_all', stage: 10, icon: '🏆', name: '実績を全て達成しよう', desc: '実績を1つ残らず全て達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length },
+  { id: 'm10_next_universe10', stage: 10, icon: '🌌', name: '「次なる宇宙の種」を10個所有しよう', desc: '真の完全制覇へ、最新施設をさらに育てる', check: (s) => (s.buildings.next_universe_seed || 0) >= 10 },
+  { id: 'm10_buildings1000000', stage: 10, icon: '🏙️', name: '施設を合計1,000,000個所有しよう', desc: '種類を問わず施設を合計100万個所有する', check: (s) => totalBuildingsOwned(s) >= 1000000 },
+  { id: 'm10_final', stage: 10, icon: '🎉', name: 'タウンDELUXEを完全制覇しよう', desc: '全実績・全名声ショップ・全施設1,000個以上を同時に達成する', check: (s) => (s.achievements || []).length >= ACHIEVEMENTS.length && (s.fameShopUpgrades || []).length >= FAME_SHOP.length && BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 1000) }
+];
+const QUESTS_BY_ID = new Map(QUESTS.map((q) => [q.id, q]));
+const QUEST_STAGE_NAMES = [
+  'はじめの一歩', '町の基盤づくり', '経済成長', '拡張と発展', '更なる高み',
+  '名声への道', '銀河評議会', '第二部の入口', '無限への挑戦', '究極完全都市'
+];
+const QUEST_STAGE_COUNT = QUESTS.reduce((max, q) => Math.max(max, q.stage), 0);
+// stageごとの報酬テーブル(index 0 = stage1)。floor未満にはならず、収入に応じてさらに上乗せされる
+const QUEST_STAGE_REWARD = [
+  { floor: 20,         mult: 2 },
+  { floor: 150,        mult: 6 },
+  { floor: 1000,       mult: 15 },
+  { floor: 8000,       mult: 35 },
+  { floor: 60000,      mult: 70 },
+  { floor: 500000,     mult: 130 },
+  { floor: 4000000,    mult: 220 },
+  { floor: 30000000,   mult: 350 },
+  { floor: 250000000,  mult: 500 },
+  { floor: 2000000000, mult: 700 }
+];
+
 function maxAffordable(building, currentCount, money) {
   // find max n such that buildingCost(building,currentCount,n) <= money
   let lo = 0, hi = 1;

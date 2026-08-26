@@ -55,6 +55,7 @@ const UI = (() => {
     if (activeTab === 'build') renderBuild();
     else if (activeTab === 'upgrade') renderUpgrades();
     else if (activeTab === 'prestige') renderPrestige();
+    else if (activeTab === 'quest') renderQuests();
   }
 
   function updatePetitionTimer() {
@@ -76,6 +77,7 @@ const UI = (() => {
         $(`tab-${activeTab}`).classList.remove('hidden');
         $('buy-qty').classList.toggle('hidden', activeTab !== 'build');
         $('buy-all-row').classList.toggle('hidden', activeTab !== 'build');
+        Game.markUiFlag(`opened_tab_${activeTab}`);
         renderAll();
       });
     });
@@ -104,6 +106,7 @@ const UI = (() => {
 
   function bindBuyAll() {
     $('buy-all-btn').addEventListener('click', () => {
+      Game.markUiFlag('used_buy_all');
       const result = Game.buyAllAffordable(buyAllOrder);
       if (result.totalQty > 0) {
         const kinds = result.bought.length;
@@ -263,6 +266,7 @@ const UI = (() => {
   }
 
   function showBgmModal() {
+    Game.markUiFlag('opened_bgm_modal');
     const s = Game.getState();
     const modal = $('changelog-modal');
     const rows = BGM_TRACKS.map((t) => {
@@ -397,6 +401,7 @@ const UI = (() => {
   function renderAll() {
     updateTopbar();
     renderBuild();
+    renderQuests();
     renderUpgrades();
     renderAchievements();
     renderStats();
@@ -769,6 +774,45 @@ const UI = (() => {
     });
   }
 
+  // --- 恒久ミッション(チュートリアル〜終盤の目標。デイリーと違いリセットされない) ---
+  function renderQuests() {
+    const el = $('tab-quest');
+    if (!el) return;
+    const s = Game.getState();
+    let html = '<div class="daily-heading">🎓 ミッション</div><p class="card-desc quest-intro">デイリーミッションと違い、リセットされない恒久の目標一覧です。各ステージのミッションを70%以上達成すると次のステージが解放されます。</p>';
+    for (let stage = 1; stage <= QUEST_STAGE_COUNT; stage++) {
+      const stageQuests = QUESTS.filter((q) => q.stage === stage);
+      const unlocked = Game.isQuestStageUnlocked(stage);
+      const claimedCount = stageQuests.filter((q) => Game.isQuestClaimed(q.id)).length;
+      html += `<div class="daily-heading quest-stage-heading">Stage ${stage}: ${QUEST_STAGE_NAMES[stage - 1]}(${claimedCount}/${stageQuests.length})</div>`;
+      if (!unlocked) {
+        html += '<p class="card-desc quest-locked-note">🔒 前のステージのミッションを70%以上達成すると解放されます</p>';
+        continue;
+      }
+      stageQuests.forEach((q) => {
+        const claimed = Game.isQuestClaimed(q.id);
+        const done = q.check(s);
+        const reward = Game.questReward(q.stage);
+        html += `
+          <div class="card mission-card${done ? (claimed ? ' claimed' : ' ready') : ''}">
+            <div class="card-icon">${q.icon}</div>
+            <div class="card-body">
+              <div class="card-title">${q.name}</div>
+              <div class="card-desc">${q.desc}</div>
+              <div class="card-sub">報酬 ${formatNum(reward)}円</div>
+            </div>
+            <button class="buy-btn quest-claim-btn" data-id="${q.id}" ${done && !claimed ? '' : 'disabled'}>${claimed ? '達成済み' : (done ? '受け取る' : '未達成')}</button>
+          </div>`;
+      });
+    }
+    el.innerHTML = html;
+    el.querySelectorAll('.quest-claim-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (Game.claimQuest(btn.dataset.id)) renderQuests();
+      });
+    });
+  }
+
   // --- 街並みシーン(購入時にランダムな位置へ設置) ---
   // 施設が130種類×最大24個/種まで増えうるため、重く感じる場合向けに表示モードを用意する:
   //   all(既定)   : そのまま全部表示
@@ -974,6 +1018,7 @@ const UI = (() => {
     $('settings-btn').addEventListener('click', showSettingsModal);
   }
   function showSettingsModal() {
+    Game.markUiFlag('opened_settings');
     const modal = $('changelog-modal');
     const rows = [
       { id: 'set-pedestrian', label: '🚶 住民表示', desc: '街を歩く住民・犬・猫の表示', on: Game.getShowPedestrians() },
@@ -1015,6 +1060,7 @@ const UI = (() => {
     modal.querySelectorAll('.bd-mode-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
         Game.setBuildingDisplayMode(btn.dataset.mode);
+        Game.markUiFlag('used_building_display_mode');
         renderBuildingsLayer();
         showSettingsModal();
       });
@@ -1093,6 +1139,9 @@ const UI = (() => {
       updateTopbar();
     } else if (evt.type === 'mission-claimed') {
       Effects.toast(`${evt.mission.icon} デイリーミッション達成!+${formatNum(evt.mission.reward)}円`, '📅');
+      updateTopbar();
+    } else if (evt.type === 'quest-claimed') {
+      Effects.toast(`${evt.quest.icon} ミッション「${evt.quest.name}」達成!+${formatNum(evt.reward)}円`, '🎓');
       updateTopbar();
     } else if (evt.type === 'daily-reset') {
       if (activeTab === 'daily') renderDaily();

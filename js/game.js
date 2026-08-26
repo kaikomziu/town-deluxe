@@ -742,6 +742,42 @@ const Game = (() => {
     return true;
   }
 
+  // --- 恒久ミッション(QUESTS): デイリーと違いリセットされない、チュートリアル〜終盤目標の一覧 ---
+  // 「〜タブを開いた」等、状態だけでは判定できない初回操作はuiFlagsに記録して条件に使う
+  function markUiFlag(name) {
+    state.uiFlags = state.uiFlags || {};
+    if (state.uiFlags[name]) return false;
+    state.uiFlags[name] = true;
+    return true;
+  }
+  function isQuestClaimed(id) { return (state.questsClaimed || []).includes(id); }
+  function isQuestStageUnlocked(stage) {
+    if (stage <= 1) return true;
+    const prevQuests = QUESTS.filter((q) => q.stage === stage - 1);
+    if (prevQuests.length === 0) return true;
+    const claimed = prevQuests.filter((q) => isQuestClaimed(q.id)).length;
+    return isQuestStageUnlocked(stage - 1) && claimed >= Math.ceil(prevQuests.length * 0.7);
+  }
+  function questReward(stage) {
+    const cfg = QUEST_STAGE_REWARD[Math.min(stage, QUEST_STAGE_REWARD.length) - 1];
+    return Math.max(cfg.floor, Math.round(incomePerSec() * cfg.mult * fameEffectMult('missionRewardMult')));
+  }
+  function claimQuest(id) {
+    const q = QUESTS_BY_ID.get(id);
+    if (!q) return false;
+    if (isQuestClaimed(id)) return false;
+    if (!isQuestStageUnlocked(q.stage)) return false;
+    if (!q.check(state)) return false;
+    const reward = questReward(q.stage);
+    state.money += reward;
+    state.lifetimeMoney += reward;
+    state.questsClaimed = state.questsClaimed || [];
+    state.questsClaimed.push(id);
+    Effects.sound('buy');
+    emit('event', { type: 'quest-claimed', quest: q, reward });
+    return true;
+  }
+
   // --- 連続ログイン報酬 ---
   function checkLoginStreak() {
     const today = todayStr();
@@ -1013,6 +1049,7 @@ const Game = (() => {
     getLayout: () => state.layout,
     getRank: () => RANK_TIERS[rankIndexFor(state.lifetimeMoney)],
     getDaily: () => state.daily, claimMission,
+    markUiFlag, isQuestClaimed, isQuestStageUnlocked, questReward, claimQuest,
     getShowPedestrians: () => state.showPedestrians, togglePedestrians,
     getShowBuyToasts, toggleBuyToasts,
     getShowEffects, toggleEffects, getShowScreenShake, toggleScreenShake,

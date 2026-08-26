@@ -249,6 +249,9 @@ button:disabled { opacity: .4; cursor: not-allowed; }
 .streak-box { background: linear-gradient(135deg, #3a2a1f, #1f2740); border-radius: 12px; padding: 12px; }
 .streak-num { font-weight: 800; font-size: 15px; color: #ff9f43; }
 .daily-heading { font-size: 13px; opacity: .8; margin: 4px 0 2px; font-weight: 700; }
+.quest-intro { margin-bottom: 10px; }
+.quest-stage-heading { margin-top: 16px; font-size: 14px; }
+.quest-locked-note { opacity: .6; margin: 4px 0 6px; padding: 10px 12px; background: rgba(255,255,255,.04); border-radius: 8px; }
 .mission-bar { height: 6px; background: rgba(255,255,255,.1); border-radius: 4px; margin-top: 4px; overflow: hidden; }
 .mission-bar-fill { height: 100%; background: linear-gradient(90deg, #4caf6b, #7ed957); }
 .mission-card.ready .mission-claim-btn { background: linear-gradient(135deg, #4caf6b, #7ed957); color: #0c1b0f; }
