@@ -33,6 +33,7 @@ function defaultState() {
     upgrades: [],
     achievements: [],
     townExpansions: [],
+    happinessExpansions: [],
     famePoints: 0,
     fameSpent: 0,
     fameShopUpgrades: [],
@@ -46,6 +47,7 @@ function defaultState() {
     happinessBonus: 0,
     petitionsAnswered: 0,
     petitionsIgnored: 0,
+    petitionsPrevented: 0,
     sicknessUntil: 0,
     sicknessSeverity: 0,
     sicknessName: '',
@@ -84,7 +86,7 @@ function defaultState() {
 // 種類数に応じて際限なく大きくなりうるフィールド。ここに載っているものはCookieに入れず、
 // LISTS_KEY(localStorage)側に保存する。新しく「〜のリスト」「〜ごとの状態を持つオブジェクト」
 // を追加するときは、ここに足すことを忘れないこと。
-const GROWING_FIELDS = ['achievements', 'upgrades', 'layout', 'fameShopUpgrades', 'buildings', 'bgmUnlocked', 'seasonalComplaintsResolved', 'daily', 'townExpansions'];
+const GROWING_FIELDS = ['achievements', 'upgrades', 'layout', 'fameShopUpgrades', 'buildings', 'bgmUnlocked', 'seasonalComplaintsResolved', 'daily', 'townExpansions', 'happinessExpansions'];
 
 function saveGame(state) {
   state.lastSave = Date.now();

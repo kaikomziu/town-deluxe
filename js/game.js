@@ -141,7 +141,7 @@ const Game = (() => {
       happiness -= Math.min(15, overRatio * 10);
     }
     state.population = Math.min(pop, cap);
-    state.happiness = Math.max(0, Math.min(150, happiness));
+    state.happiness = Math.max(0, Math.min(maxHappiness(), happiness));
   }
 
   function tick() {
@@ -188,6 +188,32 @@ const Game = (() => {
       }
     }
     return true;
+  }
+
+  // --- 一括購入: 「MAX」が今選んでいる1施設だけを買い占めるのに対し、こちらは全施設を対象に
+  // 安い施設から順番に買えるだけ買っていく(前の施設を買うほど資金が減り、後の施設へ回せる分が変わるため
+  // BUILDINGSの並び=価格が安い順にそのまま処理すればよい)。
+  function buyAllAffordable() {
+    const bought = [];
+    let totalCost = 0, totalQty = 0;
+    BUILDINGS.forEach((b) => {
+      const count = buildingCount(b.id);
+      const qty = maxAffordable(b, count, state.money);
+      if (qty <= 0) return;
+      const cost = buildingCost(b, count, qty);
+      if (buyBuilding(b.id, qty, { silent: true })) {
+        bought.push({ id: b.id, name: b.name, emoji: b.emoji, qty, cost });
+        totalCost += cost;
+        totalQty += qty;
+      }
+    });
+    if (totalQty > 0) {
+      Effects.sound('buy');
+    } else {
+      Effects.sound('error');
+    }
+    emit('event', { type: 'buy-all', bought, totalCost, totalQty });
+    return { bought, totalCost, totalQty };
   }
 
   // --- 執事の自動購入(名声ショップで解放): 数秒おきに、買える中で最も安い施設・アップグレードを買う ---
@@ -320,13 +346,33 @@ const Game = (() => {
     return reward;
   }
 
-  // --- 町民の声(陳情) ---
+  // --- 町民の声(陳情)(病気・火事・空き巣と同じ「予防」の型: 郵便局・会計事務所が予防を担う) ---
   function schedulePetition() {
     const delay = 70000 + Math.random() * 90000; // 70~160秒
     setTimeout(() => {
-      if (!petition) spawnPetition();
+      if (!petition) attemptPetition();
       schedulePetition();
     }, delay);
+  }
+  let petitionBuildingsCache = null;
+  function petitionBuildings() {
+    if (!petitionBuildingsCache) petitionBuildingsCache = BUILDINGS.filter((b) => b.prevention && b.prevention.petition);
+    return petitionBuildingsCache;
+  }
+  function petitionPower() {
+    return petitionBuildings().reduce((sum, b) => sum + buildingCount(b.id) * b.prevention.petition, 0);
+  }
+  function petitionPreventionChance() {
+    return Math.min(0.95, petitionPower() * fameEffectMult('preventionMult'));
+  }
+  function attemptPetition() {
+    const power = petitionPower();
+    if (power > 0 && Math.random() < petitionPreventionChance()) {
+      state.petitionsPrevented = (state.petitionsPrevented || 0) + 1;
+      emit('event', { type: 'petition-prevented' });
+      return;
+    }
+    spawnPetition();
   }
   function spawnPetition() {
     const season = currentSeason();
@@ -782,6 +828,34 @@ const Game = (() => {
     return true;
   }
 
+  // --- 幸福度政策(かつて固定150%だった幸福度の上限を引き上げる恒久アップグレード。町の拡張と同じ型) ---
+  let maxHappinessCache = null;
+  function invalidateMaxHappinessCache() { maxHappinessCache = null; }
+  function maxHappiness() {
+    if (maxHappinessCache !== null) return maxHappinessCache;
+    let total = BASE_HAPPINESS_CAP;
+    (state.happinessExpansions || []).forEach((id) => {
+      const e = HAPPINESS_EXPANSIONS_BY_ID.get(id);
+      if (e) total += e.capBonus;
+    });
+    maxHappinessCache = total;
+    return total;
+  }
+  function isHappinessExpansionOwned(id) { return (state.happinessExpansions || []).includes(id); }
+  function buyHappinessExpansion(id) {
+    const e = HAPPINESS_EXPANSIONS_BY_ID.get(id);
+    if (!e) return false;
+    if (isHappinessExpansionOwned(id)) return false;
+    if (!canAfford(e.cost)) { Effects.sound('error'); return false; }
+    state.money -= e.cost;
+    state.happinessExpansions.push(id);
+    invalidateMaxHappinessCache();
+    recomputeStats();
+    Effects.sound('buy');
+    emit('event', { type: 'happiness-expansion-bought', expansion: e });
+    return true;
+  }
+
   // --- 都市合併(プレステージ) ---
   function prestigeThreshold() { return 1000000 * fameEffectMult('prestigeThresholdMult'); }
   function potentialFame() {
@@ -847,6 +921,7 @@ const Game = (() => {
     invalidateUpgradeCaches();
     invalidateFameCache();
     invalidateMaxPopulationCache();
+    invalidateMaxHappinessCache();
     recomputeStats();
   }
 
@@ -854,11 +929,11 @@ const Game = (() => {
     init, on,
     getState: () => state,
     buildingCount, buildingMultiplier, clickMultiplier, globalMultiplier, incomePerSec,
-    buyBuilding, buyUpgrade, isUpgradeUnlocked, manualClick,
+    buyBuilding, buyAllAffordable, buyUpgrade, isUpgradeUnlocked, manualClick,
     getGolden: () => goldenBuilding, clickGolden,
     getUfo: () => ufo, clickUfo,
     isRaining: () => Date.now() < rainUntil,
-    getPetition: () => petition, resolvePetition, petitionCost,
+    getPetition: () => petition, resolvePetition, petitionCost, petitionPreventionChance,
     isSick: () => Date.now() < state.sicknessUntil, cureSickness, sicknessCureCost, sicknessPreventionChance,
     isFireActive, cureFire, fireCureCost, firePreventionChance,
     crimePreventionChance,
@@ -869,6 +944,7 @@ const Game = (() => {
     potentialFame, canPrestige, doPrestige, prestigeThreshold,
     fameAvailable, isFameShopTierUnlocked, isFameUpgradeOwned, buyFameUpgrade,
     maxPopulation, isTownExpansionOwned, buyTownExpansion,
+    maxHappiness, isHappinessExpansionOwned, buyHappinessExpansion,
     toggleMute, toggleBgmMute, setBgmVolume, buyBgmTrack, selectBgm, doReset, saveNow: () => saveGame(state)
   };
 })();

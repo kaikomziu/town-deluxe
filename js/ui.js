@@ -10,6 +10,7 @@ const UI = (() => {
     $('version-label').textContent = VERSION;
     bindTabs();
     bindQty();
+    bindBuyAll();
     bindTownHall();
     bindGolden();
     bindUfo();
@@ -84,6 +85,18 @@ const UI = (() => {
         qty = btn.dataset.qty === 'max' ? 'max' : parseInt(btn.dataset.qty, 10);
         renderBuild();
       });
+    });
+  }
+
+  function bindBuyAll() {
+    $('buy-all-btn').addEventListener('click', () => {
+      const result = Game.buyAllAffordable();
+      if (result.totalQty > 0) {
+        const kinds = result.bought.length;
+        Effects.toast(`🛒 ${kinds}種類・計${formatNum(result.totalQty)}個購入(${formatNum(result.totalCost)}円)`, '🛒');
+        renderBuild();
+        updateTopbar();
+      }
     });
   }
 
@@ -410,6 +423,9 @@ const UI = (() => {
       if (b.prevention && b.prevention.crime) {
         preventBadge += ` <span class="district-badge" title="犯罪の発生自体を未然に防ぐ確率(交番が多いほど上昇、最大95%)">🚓防犯${Math.round(Game.crimePreventionChance() * 100)}%</span>`;
       }
+      if (b.prevention && b.prevention.petition) {
+        preventBadge += ` <span class="district-badge" title="陳情(住民の苦情)の発生自体を未然に防ぐ確率(郵便局・会計事務所が多いほど上昇、最大95%)">📮陳情予防${Math.round(Game.petitionPreventionChance() * 100)}%</span>`;
+      }
       card.innerHTML = `
         <div class="card-icon">${b.emoji}</div>
         <div class="card-body">
@@ -434,6 +450,7 @@ const UI = (() => {
     const el = $('tab-upgrade');
     el.innerHTML = '';
     el.appendChild(renderTownExpansionSection());
+    el.appendChild(renderHappinessExpansionSection());
     const heading = document.createElement('div');
     heading.className = 'daily-heading';
     heading.textContent = '⚡ 施設アップグレード';
@@ -479,6 +496,42 @@ const UI = (() => {
       card.querySelector('.buy-btn').addEventListener('click', () => {
         if (Game.buyTownExpansion(e.id)) {
           Effects.toast(`${e.name} で最大人口が+${formatNum(e.popBonus)}人!`, '🏘️');
+          renderUpgrades();
+          updateTopbar();
+        }
+      });
+    }
+    return card;
+  }
+
+  function renderHappinessExpansionSection() {
+    const s = Game.getState();
+    const wrap = document.createElement('div');
+    const heading = document.createElement('div');
+    heading.className = 'daily-heading';
+    heading.textContent = `😊 幸福度政策(幸福度上限: ${Math.round(s.happiness)}% / ${formatNum(Game.maxHappiness())}%)`;
+    wrap.appendChild(heading);
+    HAPPINESS_EXPANSIONS.forEach((e) => wrap.appendChild(happinessExpansionCard(e)));
+    return wrap;
+  }
+
+  function happinessExpansionCard(e) {
+    const s = Game.getState();
+    const owned = Game.isHappinessExpansionOwned(e.id);
+    const affordable = !owned && s.money >= e.cost;
+    const card = document.createElement('div');
+    card.className = 'card upgrade-card' + (owned ? ' owned' : (affordable ? '' : ' disabled'));
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="card-title">${e.name}</div>
+        <div class="card-desc">${e.desc}</div>
+      </div>
+      ${owned ? '<span class="owned-badge">✅取得済み</span>' : `<button class="buy-btn" ${affordable ? '' : 'disabled'}>${formatNum(e.cost)}円</button>`}
+    `;
+    if (!owned) {
+      card.querySelector('.buy-btn').addEventListener('click', () => {
+        if (Game.buyHappinessExpansion(e.id)) {
+          Effects.toast(`${e.name} で幸福度の上限が+${formatNum(e.capBonus)}!`, '😊');
           renderUpgrades();
           updateTopbar();
         }
@@ -536,7 +589,8 @@ const UI = (() => {
         <div class="stats-item"><span>累計獲得資金</span><b>${formatNum(s.lifetimeMoney)}円</b></div>
         <div class="stats-item"><span>現在の人口 / 最大人口</span><b>${formatNum(s.population)} / ${formatNum(Game.maxPopulation())}人</b></div>
         <div class="stats-item"><span>町の拡張回数</span><b>${(s.townExpansions || []).length} / ${TOWN_EXPANSIONS.length}回</b></div>
-        <div class="stats-item"><span>幸福度(収入ブースト)</span><b>${Math.round(s.happiness)}% <span class="stats-sub">(収入+${Math.round(s.happiness)}%)</span></b></div>
+        <div class="stats-item"><span>幸福度政策回数</span><b>${(s.happinessExpansions || []).length} / ${HAPPINESS_EXPANSIONS.length}回</b></div>
+        <div class="stats-item"><span>幸福度(収入ブースト)</span><b>${Math.round(s.happiness)}% / ${formatNum(Game.maxHappiness())}% <span class="stats-sub">(収入+${Math.round(s.happiness)}%)</span></b></div>
         <div class="stats-item"><span>クリック回数</span><b>${s.totalClicks.toLocaleString()}回</b></div>
         <div class="stats-item"><span>ゴールデンビル獲得</span><b>${s.goldenClicks}回</b></div>
         <div class="stats-item"><span>UFO遭遇</span><b>${s.ufoClicks}回</b></div>
@@ -544,6 +598,7 @@ const UI = (() => {
         <div class="stats-item"><span>火事を未然に防いだ回数</span><b>${(s.hazards && s.hazards.fire && s.hazards.fire.prevented) || 0}回</b></div>
         <div class="stats-item"><span>犯罪を未然に防いだ回数</span><b>${s.crimePrevented || 0}回</b></div>
         <div class="stats-item"><span>犯罪による被害総額</span><b>${formatNum(s.crimeStolenTotal || 0)}円</b></div>
+        <div class="stats-item"><span>陳情を未然に防いだ回数</span><b>${s.petitionsPrevented || 0}回</b></div>
         <div class="stats-item"><span>都市合併回数</span><b>${s.prestigeCount}回</b></div>
         <div class="stats-item"><span>名声ポイント</span><b>${s.famePoints}</b></div>
         <div class="stats-item"><span>プレイ時間</span><b>${hrs}時間${mins}分</b></div>
@@ -798,8 +853,8 @@ const UI = (() => {
     if (pedestrianTimer) clearInterval(pedestrianTimer);
     const container = $('pedestrian-layer');
     container.innerHTML = '';
-    const count = 6;
-    const emojis = ['🚶', '🚶‍♀️', '🐕'];
+    const count = 10;
+    const emojis = ['🚶', '🚶‍♀️', '🐕', '🐈', '🚶', '🐕', '🐈', '🚶‍♀️', '🐕', '🐈'];
     for (let i = 0; i < count; i++) {
       const p = document.createElement('span');
       p.className = 'pedestrian';
@@ -900,6 +955,8 @@ const UI = (() => {
       Effects.toast(`${evt.building.emoji} ${evt.building.name} が ${evt.count}個に!`, evt.building.emoji);
     } else if (evt.type === 'petition-spawn') {
       renderPetition(evt.petition);
+    } else if (evt.type === 'petition-prevented') {
+      Effects.toast('📮 郵便局・会計事務所のおかげで陳情の発生を未然に防いだ!', '📮');
     } else if (evt.type === 'petition-expire') {
       $('petition-panel').classList.add('hidden');
       Effects.toast(`${evt.template.icon} 声を聞き逃してしまった…幸福度 ${evt.template.ignoreHappiness}`, evt.template.icon);

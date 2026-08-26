@@ -5,7 +5,7 @@ const COST_MULT = 1.15;
 // 施設定義: id, 名前, 絵文字, 基礎コスト, 基礎収入/秒, 人口寄与, 幸福度寄与, 説明
 const BUILDINGS = [
   { id: 'house',          name: '家',            emoji: '🏠', baseCost: 15,                  baseIncome: 0.1,        pop: 2,    happiness: 0,   desc: '町の住民が暮らす家。少しずつ資金を稼ぐ。' },
-  { id: 'post_office',    name: '郵便局',        emoji: '📮', baseCost: 26,                  baseIncome: 0.19,       pop: 1,    happiness: 1,   desc: '手紙や小包を町中に届ける郵便局。地域のつながりを支える。' },
+  { id: 'post_office',    name: '郵便局',        emoji: '📮', baseCost: 26,                  baseIncome: 0.19,       pop: 1,    happiness: 1,   desc: '手紙や小包を町中に届ける郵便局。住民の声も早めに拾い上げ、陳情の発生を少し抑える。', prevention: { petition: 0.02 } },
   { id: 'yatai',          name: '屋台',          emoji: '🍢', baseCost: 45,                  baseIncome: 0.37,       pop: 1,    happiness: 1,   desc: '香ばしい匂いで人を集める屋台グルメ。手軽に稼げる。' },
   { id: 'dagashiya',      name: '駄菓子屋',      emoji: '🍬', baseCost: 67,                  baseIncome: 0.6,        pop: 1,    happiness: 2,   desc: '懐かしい駄菓子が並ぶ子供たちの楽園。' },
   { id: 'farm',           name: '畑',            emoji: '🌾', baseCost: 100,                 baseIncome: 1,          pop: 1,    happiness: 0,   desc: '作物を育てて売る。雨の日は収穫アップ。' },
@@ -49,7 +49,7 @@ const BUILDINGS = [
   { id: 'station',        name: '駅',            emoji: '🚉', baseCost: 20000000,             baseIncome: 7800,       pop: 18,   happiness: 1,   desc: '人の流れを生み出す交通の要。' },
   { id: 'bus_terminal',   name: 'バスターミナル', emoji: '🚌', baseCost: 27000000,             baseIncome: 9347,       pop: 20,   happiness: 1,   desc: '町中を結ぶバス路線の拠点。' },
   { id: 'mall',           name: 'ショッピングモール', emoji: '🛍️', baseCost: 37000000,        baseIncome: 11200,      pop: 16,   happiness: 3,   desc: '何でも揃う大型商業施設。町の消費を一手に担う。' },
-  { id: 'accounting_firm',name: '会計事務所',    emoji: '🧾', baseCost: 51000000,             baseIncome: 13390,      pop: 15,   happiness: 0,   desc: '町の経理や税務を支える会計事務所。' },
+  { id: 'accounting_firm',name: '会計事務所',    emoji: '🧾', baseCost: 51000000,             baseIncome: 13390,      pop: 15,   happiness: 0,   desc: '町の経理や税務を支える会計事務所。財政相談に応じ、陳情の発生を抑える。', prevention: { petition: 0.05 } },
   { id: 'bank',           name: '銀行',          emoji: '🏦', baseCost: 70000000,             baseIncome: 16000,      pop: 14,   happiness: 0,   desc: '町のお金を管理する金融機関。着実に利益を生む。' },
   { id: 'gym',            name: 'フィットネスジム', emoji: '💪', baseCost: 150000000,          baseIncome: 26500,      pop: 12,   happiness: 2,   desc: '汗を流して心身を鍛えるジム。住民の健康を支える。' },
   { id: 'spa_resort',     name: 'スパリゾート',  emoji: '🧖', baseCost: 220000000,            baseIncome: 34150,      pop: 18,   happiness: 4,   desc: '心と体を癒すスパリゾート。' },
@@ -207,6 +207,25 @@ const TOWN_EXPANSIONS = [
   { id: 'expand_12', cost: 50000000000000,   popBonus: 2000000, name: '🌠 星間都市連邦',    desc: '最大人口が+2,000,000人される。' }
 ];
 const TOWN_EXPANSIONS_BY_ID = new Map(TOWN_EXPANSIONS.map((e) => [e.id, e]));
+
+// 幸福度の基礎上限(かつては固定150%だった)。「幸福度政策」を買うことで
+// 町の拡張(最大人口)と同じ要領で、上限そのものを恒久的に引き上げていく。
+const BASE_HAPPINESS_CAP = 150;
+const HAPPINESS_EXPANSIONS = [
+  { id: 'happy_1',  cost: 500,              capBonus: 10,  name: '😊 町民相談窓口',        desc: '住民の声を汲み取る窓口を新設し、幸福度の上限が永久に+10される。' },
+  { id: 'happy_2',  cost: 5000,             capBonus: 15,  name: '🎉 福祉政策 I',          desc: '幸福度の上限が永久にさらに+15される。' },
+  { id: 'happy_3',  cost: 50000,            capBonus: 20,  name: '🎊 文化振興策 I',        desc: '幸福度の上限が永久にさらに+20される。' },
+  { id: 'happy_4',  cost: 500000,           capBonus: 30,  name: '🏵️ 幸福都市計画 I',      desc: '幸福度の上限が永久にさらに+30される。' },
+  { id: 'happy_5',  cost: 5000000,          capBonus: 40,  name: '🏵️ 幸福都市計画 II',     desc: '幸福度の上限が永久にさらに+40される。' },
+  { id: 'happy_6',  cost: 50000000,         capBonus: 55,  name: '🌟 理想郷プロジェクト I', desc: '幸福度の上限が永久にさらに+55される。' },
+  { id: 'happy_7',  cost: 500000000,        capBonus: 70,  name: '🌟 理想郷プロジェクト II', desc: '幸福度の上限が永久にさらに+70される。' },
+  { id: 'happy_8',  cost: 5000000000,       capBonus: 90,  name: '🌈 桃源郷計画 I',        desc: '幸福度の上限が永久にさらに+90される。' },
+  { id: 'happy_9',  cost: 50000000000,      capBonus: 115, name: '🌈 桃源郷計画 II',       desc: '幸福度の上限が永久にさらに+115される。' },
+  { id: 'happy_10', cost: 500000000000,     capBonus: 140, name: '👑 至福の都 I',          desc: '幸福度の上限が永久にさらに+140される。' },
+  { id: 'happy_11', cost: 5000000000000,    capBonus: 170, name: '👑 至福の都 II',         desc: '幸福度の上限が永久にさらに+170される。' },
+  { id: 'happy_12', cost: 50000000000000,   capBonus: 200, name: '✨ 永遠の楽園',           desc: '幸福度の上限が永久にさらに+200され、町は名実ともに理想郷となる。' }
+];
+const HAPPINESS_EXPANSIONS_BY_ID = new Map(HAPPINESS_EXPANSIONS.map((e) => [e.id, e]));
 
 // 名声ショップ: 都市合併で得た名声ポイントを使って買う恒久アップグレード(合併しても失われない)。
 // tierは解放に必要な累計都市合併回数(FAME_SHOP_TIER_REQUIREMENTのインデックスに対応)で、
@@ -490,7 +509,8 @@ function generateAchievements() {
   list.push({ id: 'ach_season_heat', name: '🥵 夏の備え', desc: '夏の陳情で「冷房設備を導入する」を選ぶ', check: (s) => (s.seasonalComplaintsResolved || []).includes('heat') });
 
   list.push({ id: 'ach_happiness_100', name: '😊 幸福な町', desc: '幸福度100%以上を達成', check: (s) => s.happiness >= 100 });
-  list.push({ id: 'ach_happiness_150', name: '😆 楽園都市', desc: '幸福度150%(上限)を達成', check: (s) => s.happiness >= 150 });
+  list.push({ id: 'ach_happiness_150', name: '😆 楽園都市', desc: '幸福度150%以上を達成', check: (s) => s.happiness >= 150 });
+  list.push({ id: 'ach_happiness_expansion_complete', name: '🌠 至福の頂点', desc: '幸福度政策を全て行い、幸福度の上限を極限まで引き上げる', check: (s) => (s.happinessExpansions || []).length >= HAPPINESS_EXPANSIONS.length });
   list.push({ id: 'ach_all_buildings', name: '🏙️ フルコンプ都市', desc: '全ての施設を1つ以上所有する', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 1) });
   list.push({ id: 'ach_balanced_10', name: '⚖️ バランス都市', desc: '全ての施設を10個以上ずつ所有する', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 10) });
   list.push({ id: 'ach_balanced_50', name: '🌈 万能都市', desc: '全ての施設を50個以上ずつ所有する', check: (s) => BUILDINGS.every((b) => (s.buildings[b.id] || 0) >= 50) });
