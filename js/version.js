@@ -1,7 +1,14 @@
 // タウンDELUXE 更新履歴
-const VERSION = '1.6.2';
+const VERSION = '1.6.3';
 
 const CHANGELOG = [
+  {
+    version: '1.6.3',
+    date: '2026-08-27',
+    notes: [
+      '📢 陳情(町民の声)で資金不足のため応えられなかった時、無反応に見えないよう「資金が足りません」と表示するように改善'
+    ]
+  },
   {
     version: '1.6.2',
     date: '2026-08-27',

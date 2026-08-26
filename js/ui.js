@@ -142,7 +142,12 @@ const UI = (() => {
   function bindPetition() {
     $('petition-agree').addEventListener('click', () => {
       const result = Game.resolvePetition(true);
-      if (result) handlePetitionResult(result);
+      if (result) {
+        handlePetitionResult(result);
+      } else if (Game.getPetition()) {
+        // 陳情はまだ有効なのに失敗した=資金不足。無反応に見えないよう明示する
+        Effects.toast('資金が足りません…', '💰');
+      }
     });
     $('petition-ignore').addEventListener('click', () => {
       const result = Game.resolvePetition(false);
