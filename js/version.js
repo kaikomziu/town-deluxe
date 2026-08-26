@@ -1,7 +1,14 @@
 // タウンDELUXE 更新履歴
-const VERSION = '1.6.4';
+const VERSION = '1.6.5';
 
 const CHANGELOG = [
+  {
+    version: '1.6.5',
+    date: '2026-08-27',
+    notes: [
+      '🎼 BGM「Rain on Rhodes」を削除しました'
+    ]
+  },
   {
     version: '1.6.4',
     date: '2026-08-27',
