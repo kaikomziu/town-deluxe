@@ -70,22 +70,36 @@ const Game = (() => {
 
   function buildingCount(id) { return state.buildings[id] || 0; }
 
-  function buildingMultiplier(id) {
-    let mult = 1;
+  // --- 所持アップグレードから来る倍率のキャッシュ ---
+  // 施設×アップグレードが数十〜数百種類規模になったため、buildingMultiplierを呼ぶたびに
+  // 「所持アップグレード数 × 全アップグレード数」を総当たりで舐めると、施設ごとに呼ばれる
+  // incomePerSec()内で数千万回規模の計算になり得る。所持アップグレードが変化した時だけ
+  // 1回スキャンして施設ごとの倍率をまとめて計算し、以降はO(1)ルックアップにする。
+  let buildingMultCache = null;
+  let clickMultFromUpgradesCache = 1;
+  function invalidateUpgradeCaches() { buildingMultCache = null; }
+  function ensureUpgradeCaches() {
+    if (buildingMultCache) return;
+    buildingMultCache = {};
+    clickMultFromUpgradesCache = 1;
     state.upgrades.forEach((uid) => {
-      const up = UPGRADES.find((u) => u.id === uid);
-      if (up && up.effect.type === 'mult' && up.effect.buildingId === id) mult *= up.effect.value;
+      const up = UPGRADES_BY_ID.get(uid);
+      if (!up) return;
+      if (up.effect.type === 'mult') {
+        buildingMultCache[up.effect.buildingId] = (buildingMultCache[up.effect.buildingId] || 1) * up.effect.value;
+      } else if (up.effect.type === 'click') {
+        clickMultFromUpgradesCache *= up.effect.value;
+      }
     });
-    return mult;
+  }
+  function buildingMultiplier(id) {
+    ensureUpgradeCaches();
+    return buildingMultCache[id] || 1;
   }
 
   function clickMultiplier() {
-    let mult = 1;
-    state.upgrades.forEach((uid) => {
-      const up = UPGRADES.find((u) => u.id === uid);
-      if (up && up.effect.type === 'click') mult *= up.effect.value;
-    });
-    return mult * fameEffectMult('clickMult');
+    ensureUpgradeCaches();
+    return clickMultFromUpgradesCache * fameEffectMult('clickMult');
   }
 
   function globalMultiplier() {
@@ -190,12 +204,13 @@ const Game = (() => {
 
   function buyUpgrade(id, opts) {
     opts = opts || {};
-    const up = UPGRADES.find((u) => u.id === id);
+    const up = UPGRADES_BY_ID.get(id);
     if (!up) return false;
     if (state.upgrades.includes(id)) return false;
     if (!canAfford(up.cost)) { if (!opts.silent) Effects.sound('error'); return false; }
     state.money -= up.cost;
     state.upgrades.push(id);
+    invalidateUpgradeCaches();
     addDailyProgress('upgradesToday', 1);
     if (!opts.silent) Effects.sound('buy');
     emit('buy', { id, upgrade: true, silent: !!opts.silent });
@@ -360,8 +375,11 @@ const Game = (() => {
   }
   // 予防チェック: 医療系施設(病院・動物病院・保健所など)が多いほど、そもそも流行が起きにくくなる
   // (0円でも最大95%までしか防げない=稀に起きる)。各施設の`prevention.sickness`が寄与率。
+  // BUILDINGSは定数配列で結果が変わらないため一度だけ計算する
+  let medicalBuildingsCache = null;
   function medicalBuildings() {
-    return BUILDINGS.filter((b) => b.prevention && b.prevention.sickness);
+    if (!medicalBuildingsCache) medicalBuildingsCache = BUILDINGS.filter((b) => b.prevention && b.prevention.sickness);
+    return medicalBuildingsCache;
   }
   function medicalPower() {
     return medicalBuildings().reduce((sum, b) => sum + buildingCount(b.id) * b.prevention.sickness, 0);
@@ -549,10 +567,18 @@ const Game = (() => {
   }
 
   // --- 実績 ---
+  // 実績が数百件規模になったため、毎回ACHIEVEMENTS.length分 state.achievements.includes()
+  // (これもO(n))を回すと二重ループで重くなる。所持済みIDをSetにキャッシュしO(1)判定にする。
+  let achievementSet = null;
   function checkAchievements() {
+    if (state.achievements.length >= ACHIEVEMENTS.length) return; // 全達成済みなら何もしない
+    if (!achievementSet || achievementSet.size !== state.achievements.length) {
+      achievementSet = new Set(state.achievements);
+    }
     ACHIEVEMENTS.forEach((a) => {
-      if (!state.achievements.includes(a.id) && a.check(state)) {
+      if (!achievementSet.has(a.id) && a.check(state)) {
         state.achievements.push(a.id);
+        achievementSet.add(a.id);
         Effects.sound('achievement');
         emit('achievement', a);
       }
@@ -566,20 +592,27 @@ const Game = (() => {
   function isFameShopTierUnlocked(tier) { return fameShopTierUnlocked(tier, state.prestigeCount); }
   function isFameUpgradeOwned(id) { return (state.fameShopUpgrades || []).includes(id); }
   function buyFameUpgrade(id) {
-    const item = FAME_SHOP.find((f) => f.id === id);
+    const item = FAME_SHOP_BY_ID.get(id);
     if (!item) return false;
     if (isFameUpgradeOwned(id)) return false;
     if (!isFameShopTierUnlocked(item.tier)) return false;
     if (fameAvailable() < item.cost) { Effects.sound('error'); return false; }
     state.fameSpent = (state.fameSpent || 0) + item.cost;
     state.fameShopUpgrades.push(id);
+    invalidateFameCache();
     recomputeStats();
     Effects.sound('buy');
     emit('event', { type: 'fame-upgrade-bought', item });
     return true;
   }
+  // 名声ショップは所持数が数十件規模でも、fameEffectMult等がtick中に何度も呼ばれるため
+  // 同様にキャッシュする(所持アイテムが変化するのは購入時とリセット時のみ)。
+  let fameOwnedCache = null;
+  function invalidateFameCache() { fameOwnedCache = null; }
   function fameOwnedItems() {
-    return (state.fameShopUpgrades || []).map((id) => FAME_SHOP.find((f) => f.id === id)).filter(Boolean);
+    if (fameOwnedCache) return fameOwnedCache;
+    fameOwnedCache = (state.fameShopUpgrades || []).map((id) => FAME_SHOP_BY_ID.get(id)).filter(Boolean);
+    return fameOwnedCache;
   }
   function fameEffectMult(type) {
     let mult = 1;
@@ -616,6 +649,7 @@ const Game = (() => {
     BUILDINGS.forEach((b) => (state.buildings[b.id] = 0));
     state.upgrades = [];
     state.layout = [];
+    invalidateUpgradeCaches();
     recomputeStats();
     Effects.sound('prestige');
     emit('prestige', { gained });
@@ -661,6 +695,8 @@ const Game = (() => {
   function doReset() {
     resetGame();
     state = defaultState();
+    invalidateUpgradeCaches();
+    invalidateFameCache();
     recomputeStats();
   }
 

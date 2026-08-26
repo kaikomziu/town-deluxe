@@ -482,6 +482,11 @@ function generateAchievements() {
 const UPGRADES = generateUpgrades();
 const ACHIEVEMENTS = generateAchievements();
 
+// id→定義 のO(1)ルックアップ用。アップグレード/名声ショップ項目が数百件規模になったため、
+// 所持数×全件数の総当たり(.find()をループ内で呼ぶ)を避けるために用意。
+const UPGRADES_BY_ID = new Map(UPGRADES.map((u) => [u.id, u]));
+const FAME_SHOP_BY_ID = new Map(FAME_SHOP.map((f) => [f.id, f]));
+
 function formatNum(n) {
   n = Math.floor(n * 100) / 100;
   if (n < 0) return '-' + formatNum(-n);
